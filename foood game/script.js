@@ -156,6 +156,50 @@ let lastTime = performance.now();
 let feedback = "";
 let feedbackUntil = 0;
 
+/* ===== 移动汤锅 ===== */
+
+// 汤锅当前位置的水平偏移量
+let soupOffsetX = 0;
+
+// 汤锅移动方向：1 向右，-1 向左
+let soupDirection = 1;
+
+// 汤锅移动速度，单位：游戏坐标/秒
+let soupSpeed = 130;
+
+// 汤锅移动范围
+// 电脑横屏范围较大，手机竖屏范围较小
+function getSoupMoveRange() {
+  return layout === PORTRAIT ? 145 : 280;
+}
+
+// 每一帧更新汤锅位置
+function updateSoupMovement(dt) {
+  const range = getSoupMoveRange();
+
+  soupOffsetX += soupDirection * soupSpeed * dt;
+
+  if (soupOffsetX >= range) {
+    soupOffsetX = range;
+    soupDirection = -1;
+  }
+
+  if (soupOffsetX <= -range) {
+    soupOffsetX = -range;
+    soupDirection = 1;
+  }
+}
+
+// 获取汤锅当前的位置
+function getSoupPosition() {
+  return {
+    x: layout.soup.x + soupOffsetX,
+    y: layout.soup.y,
+    w: layout.soup.w,
+    h: layout.soup.h
+  };
+}
+
 function status(text) {
   $("message").textContent = text;
 }
@@ -289,28 +333,46 @@ function classify(item) {
   const x = item.x;
   const y = item.y;
 
-  const inBin =
-    (x < layout.binEdge ||
-      x > layout.width - layout.binEdge) &&
-    y > layout.dropY;
+  const soup = getSoupPosition();
 
+  // 汤锅有效接取区域
+  // 使用汤锅的中间区域，避免碰到边缘也算入锅
+  const soupLeft = soup.x + soup.w * 0.15;
+  const soupRight = soup.x + soup.w * 0.85;
+
+  // 汤锅接取高度
+  const soupTop = soup.y + soup.h * 0.25;
+
+  // 食物是否落入移动的汤锅
   const inSoup =
-    x > layout.soupLeft &&
-    x < layout.soupRight &&
-    y > layout.dropY;
+    x >= soupLeft &&
+    x <= soupRight &&
+    y >= soupTop;
 
-  if (!inBin && !inSoup) return false;
+  // 食物是否被扔出左右边界
+  const outLeft = x < -item.size * 0.35;
+  const outRight =
+    x > layout.width + item.size * 0.35;
 
+  const thrownAway = outLeft || outRight;
+
+  // 不在任何分类区域，不处理
+  if (!inSoup && !thrownAway) {
+    return false;
+  }
+
+  // 新鲜食物进入汤锅：正确
+  // 变质食物扔到左右边界：正确
   const correct =
-    (item.bad && inBin) ||
-    (!item.bad && inSoup);
+    (!item.bad && inSoup) ||
+    (item.bad && thrownAway);
 
   if (correct) {
     score += item.bad ? 150 : 100;
 
     flash(
       item.bad
-        ? "✓ 变质食物正确回收 +150"
+        ? "✓ 变质食物成功丢弃 +150"
         : "✓ 新鲜食材进入汤锅 +100"
     );
   } else {
@@ -319,17 +381,20 @@ function classify(item) {
     flash(
       item.bad
         ? "✗ 变质食物进入汤锅！"
-        : "✗ 新鲜食物被丢弃！"
+        : "✗ 新鲜食物被扔掉了！"
     );
   }
 
   burst(item.x, item.y, correct);
 
+  // 从画面中删除已经分类的食物
   items = items.filter(i => i !== item);
 
   updateHud();
 
-  if (lives <= 0) endGame();
+  if (lives <= 0) {
+    endGame();
+  }
 
   return true;
 }
@@ -370,8 +435,18 @@ function moveHeld(id, x, y) {
   for (const item of items) {
     if (item.held !== id) continue;
 
-    item.x = clamp(x, 0, layout.width);
-    item.y = clamp(y, 0, layout.height);
+    // 允许食材被拖出屏幕左右两侧
+item.x = clamp(
+  x,
+  -item.size,
+  layout.width + item.size
+);
+
+item.y = clamp(
+  y,
+  0,
+  layout.height
+);
   }
 }
 
@@ -381,9 +456,11 @@ function release(id, vx = 0, vy = 0) {
 
     item.held = null;
 
-    item.vx = clamp(vx, -900, 900);
+    // 释放后保留手部移动方向和速度
+    item.vx = clamp(vx, -1300, 1300);
     item.vy = clamp(vy, -950, 950);
 
+    // 立即检查是否进入汤锅或扔出屏幕
     classify(item);
   }
 }
@@ -1025,27 +1102,17 @@ function draw() {
 
   // 垃圾桶和汤锅：
   // 电脑位置不变，竖屏自动排列。
-  const left = layout.leftBin;
-  const right = layout.rightBin;
-  const soup = layout.soup;
+  // 获取正在左右移动的汤锅位置
+const soup = getSoupPosition();
 
-  drawImage(
-    "bin",
-    left.x, left.y,
-    left.w, left.h
-  );
-
-  drawImage(
-    "bin",
-    right.x, right.y,
-    right.w, right.h
-  );
-
-  drawImage(
-    "soup",
-    soup.x, soup.y,
-    soup.w, soup.h
-  );
+// 只绘制汤锅，不再绘制垃圾桶
+drawImage(
+  "soup",
+  soup.x,
+  soup.y,
+  soup.w,
+  soup.h
+);
 
   // 食材
   for (const item of items) {
@@ -1204,9 +1271,12 @@ function loop(now) {
   }
 
   if (playing) {
-    elapsed += dt;
-    remaining -= dt;
-    spawnTimer -= dt;
+  elapsed += dt;
+  remaining -= dt;
+  spawnTimer -= dt;
+
+  // 汤锅持续左右移动
+  updateSoupMovement(dt);
 
     if (spawnTimer <= 0) {
       spawnFood();
@@ -1219,38 +1289,40 @@ function loop(now) {
     }
 
     for (const item of [...items]) {
-      if (item.held !== null) continue;
 
-      item.vy += 125 * dt;
-      item.x += item.vx * dt;
-      item.y += item.vy * dt;
-      item.rotation += item.spin * dt;
+  // 被手势或鼠标抓住时，
+  // 只跟随手移动，不受重力影响
+  if (item.held !== null) continue;
 
-      if (
-        item.x < 60 ||
-        item.x > layout.width - 60
-      ) {
-        item.vx *= -1;
-      }
+  // 重力与掉落速度
+  item.vy += 125 * dt;
 
-      // 到达底部区域后执行原来的分类规则。
-      if (item.y > layout.dropY) {
-        if (classify(item)) continue;
+  item.x += item.vx * dt;
+  item.y += item.vy * dt;
 
-        if (item.y > layout.height + 90) {
-          items = items.filter(
-            i => i !== item
-          );
+  item.rotation += item.spin * dt;
 
-          lives--;
-          flash("食材掉落，失去一条命");
+  // 检测是否进入汤锅或被扔出左右边界
+  if (classify(item)) {
+    continue;
+  }
 
-          if (lives <= 0) {
-            endGame();
-          }
-        }
-      }
+  // 没接住的食材掉落到屏幕底部
+  if (item.y > layout.height + item.size) {
+
+    items = items.filter(
+      i => i !== item
+    );
+
+    lives--;
+
+    flash("食材掉落，失去一条命");
+
+    if (lives <= 0) {
+      endGame();
     }
+  }
+}
 
     if (remaining <= 0) {
       endGame();

@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f9f1d7">
+  <title>SECOND CHANCE BITES</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main id="game">
+    <canvas id="canvas"></canvas>
+
+    <video
+      id="video"
+      autoplay
+      muted
+      playsinline
+      webkit-playsinline
+    ></video>
+
+    <canvas
+      id="handPreview"
+      width="320"
+      height="240"
+    ></canvas>
+
+    <div id="hud">
+      <div class="pill">
+        <small>spoiled</small>
+        <strong id="spoiled">0</strong>
+      </div>
+
+      <div class="pill">
+        <small>time</small>
+        <strong id="time">60</strong>
+      </div>
+
+      <div class="pill score">
+        <small>score</small>
+        <strong id="score">0</strong>
+      </div>
+    </div>
+
+    <div id="lives">♥ ♥ ♥</div>
+
+    <div id="bottom">
+      <div id="message" role="status">
+        点击摄像头按钮，握拳抓取，张掌释放
+      </div>
+
+      <div class="buttons">
+        <button id="cameraBtn" type="button">
+          📷 测试摄像头
+        </button>
+
+        <button id="mouseBtn" type="button">
+          🖱 鼠标体验
+        </button>
+
+        <button id="restartBtn" type="button">
+          ↻ 重玩
+        </button>
+      </div>
+    </div>
+
+    <div id="modal">
+      <div class="modalCard">
+        <div class="eyebrow">
+          SECOND CHANCE BITES
+        </div>
+
+        <h1 id="modalTitle">
+          食物的第二次机会
+        </h1>
+
+        <p id="modalText">
+          好食材放进汤锅，坏食材扔进两侧垃圾桶。
+          握拳抓取，张掌释放。只有三条命！
+        </p>
+
+        <div class="modalButtons">
+          <button id="startCamera" type="button">
+            📷 摄像头手势开始
+          </button>
+
+          <button id="startMouse" type="button">
+            🖱 鼠标 / 触屏试玩
+          </button>
+        </div>
+
+        <p class="footnote">
+          摄像头需要 localhost 或 HTTPS，
+          首次加载模型需要联网
+        </p>
+      </div>
+    </div>
+  </main>
+
+  <script src="script.js" defer></script>
+</body>
+</html>

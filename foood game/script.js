@@ -164,8 +164,17 @@ let soupOffsetX = 0;
 // 汤锅移动方向：1 向右，-1 向左
 let soupDirection = 1;
 
-// 汤锅移动速度，单位：游戏坐标/秒
-let soupSpeed = 130;
+// 初始速度：慢
+const soupStartSpeed = 55;
+
+// 最大速度：快
+const soupMaxSpeed = 350;
+
+// 每经过1秒增加的速度
+const soupAcceleration = 5;
+
+// 当前汤锅速度
+let soupSpeed = soupStartSpeed;
 
 // 汤锅移动范围
 // 电脑横屏范围较大，手机竖屏范围较小
@@ -175,15 +184,25 @@ function getSoupMoveRange() {
 
 // 每一帧更新汤锅位置
 function updateSoupMovement(dt) {
+
   const range = getSoupMoveRange();
 
+  // 随着游戏时间增加，汤锅逐渐加速
+  soupSpeed = Math.min(
+    soupMaxSpeed,
+    soupStartSpeed + elapsed * soupAcceleration
+  );
+
+  // 根据当前速度左右移动
   soupOffsetX += soupDirection * soupSpeed * dt;
 
+  // 到达右边界后向左移动
   if (soupOffsetX >= range) {
     soupOffsetX = range;
     soupDirection = -1;
   }
 
+  // 到达左边界后向右移动
   if (soupOffsetX <= -range) {
     soupOffsetX = -range;
     soupDirection = 1;
@@ -235,6 +254,14 @@ function resetGame() {
   elapsed = 0;
   spawnTimer = 0.4;
   nextId = 0;
+  // 每次重新开始，汤锅恢复慢速
+soupSpeed = soupStartSpeed;
+
+// 汤锅回到中间
+soupOffsetX = 0;
+
+// 从中间向右移动
+soupDirection = 1;
 
   playing = true;
   finished = false;

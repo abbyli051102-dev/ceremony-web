@@ -441,7 +441,10 @@ function nearestFood(x, y) {
       item.y - y
     );
 
-    if (d < item.size * 0.8 && d < distance) {
+    if (
+  d < item.size * HAND_SETTINGS.grabRadius &&
+  d < distance
+) {
       nearest = item;
       distance = d;
     }
@@ -765,31 +768,61 @@ const connections = [
   [13,17],[17,18],[18,19],[19,20],
   [0,17]
 ];
+const HAND_SETTINGS = {
+  // 左右手骨骼颜色
+  leftColor: "#39B8FF",
+  rightColor: "#FF994A",
 
-function isFist(points) {
-  const tips = [8,12,16,20];
-  const pips = [6,10,14,18];
+  // 位置跟随灵敏度，越接近1越灵敏
+  followSpeed: 0.90,
+
+  // 握拳识别阈值
+  // 越大越容易判断为握拳
+  fistThreshold: 1.25,
+
+  // 抓取判定范围
+  grabRadius: 1.15
+};
+
+function getHandColor(label) {
+  return label === "Left"
+    ? HAND_SETTINGS.leftColor
+    : HAND_SETTINGS.rightColor;
+}
+
+function isFist(points, wasFist = false) {
+  const tips = [8, 12, 16, 20];
+  const pips = [6, 10, 14, 18];
   const wrist = points[0];
 
   let folded = 0;
+
+  // 已经抓住时，稍微放宽阈值，
+  // 防止移动过程中误判为松手
+  const threshold = wasFist
+    ? 1.35
+    : HAND_SETTINGS.fistThreshold;
 
   for (let i = 0; i < 4; i++) {
     const tip = points[tips[i]];
     const pip = points[pips[i]];
 
-    const d1 = Math.hypot(
+    const tipDistance = Math.hypot(
       tip.x - wrist.x,
       tip.y - wrist.y
     );
 
-    const d2 = Math.hypot(
+    const pipDistance = Math.hypot(
       pip.x - wrist.x,
       pip.y - wrist.y
     );
 
-    if (d1 < d2 * 1.13) folded++;
+    if (tipDistance < pipDistance * threshold) {
+      folded++;
+    }
   }
 
+  // 3根手指弯曲即可判定握拳
   return folded >= 3;
 }
 
@@ -819,22 +852,22 @@ function detectHands(now) {
     const landmarks = result.landmarks || [];
 
     landmarks.forEach((points, index) => {
+
+      // 使用 MediaPipe 返回的左右手标签
       const label =
         result.handednesses?.[index]?.[0]
-          ?.categoryName || String(index);
+          ?.categoryName || `Hand${index}`;
 
       const id = "hand-" + label;
+      const color = getHandColor(label);
+
       active.add(id);
 
       const palm = points[9];
 
-      // 关键适配：
-      // 竖屏使用 928×1648，
-      // 横屏使用 1648×928。
+      // 保留原来的镜像坐标及手机竖屏适配
       const x = (1 - palm.x) * layout.width;
       const y = palm.y * layout.height;
-
-      const fist = isFist(points);
 
       let track = handTracks.get(id);
 
@@ -849,38 +882,65 @@ function detectHands(now) {
         };
       }
 
+      // 采用前一帧的握拳状态，
+      // 避免抓取时频繁松开
+      const fist = isFist(
+        points,
+        track.closed
+      );
+
       const dt = Math.max(
         0.016,
         (now - track.t) / 1000
       );
 
+      // 保留甩手速度，用于丢弃变质食材
       track.vx = clamp(
         (x - track.x) / dt,
-        -1100,
-        1100
+        -1300,
+        1300
       );
 
       track.vy = clamp(
         (y - track.y) / dt,
-        -1100,
-        1100
+        -1300,
+        1300
       );
 
-      track.x = track.x * 0.35 + x * 0.65;
-      track.y = track.y * 0.35 + y * 0.65;
+      // 提高跟随速度：原来0.65，现在0.90
+      const speed = HAND_SETTINGS.followSpeed;
+
+      track.x =
+        track.x * (1 - speed) + x * speed;
+
+      track.y =
+        track.y * (1 - speed) + y * speed;
+
       track.t = now;
 
       if (playing && mode === "camera") {
+
+        // 张手变握拳：立即抓取
         if (fist && !track.closed) {
           grab(id, track.x, track.y);
         }
 
+        // 持续握拳：食材紧跟手部
         if (fist) {
-          moveHeld(id, track.x, track.y);
+          moveHeld(
+            id,
+            track.x,
+            track.y
+          );
         }
 
+        // 握拳变张手：立即释放
         if (!fist && track.closed) {
-          release(id, track.vx, track.vy);
+          release(
+            id,
+            track.vx,
+            track.vy
+          );
         }
       }
 
@@ -891,13 +951,13 @@ function detectHands(now) {
         points,
         x: track.x,
         y: track.y,
-        fist
+        fist,
+        label,
+        color
       });
 
-      // 摄像头预览中的手部骨骼。
-      handCtx.strokeStyle =
-        fist ? "#ffbd68" : "#74ffce";
-
+      // 摄像头预览：左右手分别着色
+      handCtx.strokeStyle = color;
       handCtx.lineWidth = 3;
 
       for (const [a, b] of connections) {
@@ -916,8 +976,9 @@ function detectHands(now) {
         handCtx.stroke();
       }
 
+      // 骨骼关节点
       for (const point of points) {
-        handCtx.fillStyle = "#ffffff";
+        handCtx.fillStyle = "#FFFFFF";
         handCtx.beginPath();
 
         handCtx.arc(
@@ -932,17 +993,27 @@ function detectHands(now) {
       }
     });
 
+    // 手部离开画面时释放食物
     for (const [id, track] of handTracks) {
       if (!active.has(id)) {
-        release(id, track.vx, track.vy);
+        release(
+          id,
+          track.vx,
+          track.vy
+        );
+
         handTracks.delete(id);
       }
     }
+
   } catch (error) {
     trackingErrors++;
 
     if (trackingErrors === 1) {
-      console.error("Hand tracking error:", error);
+      console.error(
+        "Hand tracking error:",
+        error
+      );
 
       status(
         "手势推理错误：" + error.message
@@ -958,13 +1029,14 @@ function drawHands() {
   for (const hand of hands) {
     ctx.save();
 
-    ctx.strokeStyle =
-      hand.fist ? "#f1a44b" : "#54b9a7";
-
+    // 左手蓝色，右手橙色
+    ctx.strokeStyle = hand.color;
     ctx.lineWidth = 5;
-    ctx.shadowColor = "#ffffff";
-    ctx.shadowBlur = 9;
 
+    ctx.shadowColor = hand.color;
+    ctx.shadowBlur = 12;
+
+    // 绘制21关键点之间的骨骼连接线
     for (const [a, b] of connections) {
       const p = hand.points[a];
       const q = hand.points[b];
@@ -984,8 +1056,9 @@ function drawHands() {
       ctx.stroke();
     }
 
+    // 绘制骨骼关节点
     for (const point of hand.points) {
-      ctx.fillStyle = "#fffdf2";
+      ctx.fillStyle = "#FFFFFF";
       ctx.beginPath();
 
       ctx.arc(
@@ -1000,11 +1073,21 @@ function drawHands() {
     }
 
     ctx.shadowBlur = 0;
-    ctx.font = "bold 19px sans-serif";
-    ctx.fillStyle = "#315b4b";
+
+    // 显示左右手及当前状态
+    ctx.font = "bold 21px sans-serif";
+    ctx.fillStyle = hand.color;
+
+    const handName =
+      hand.label === "Left"
+        ? "LEFT"
+        : hand.label === "Right"
+          ? "RIGHT"
+          : "HAND";
 
     ctx.fillText(
-      hand.fist ? "GRAB" : "OPEN",
+      handName + " · " +
+      (hand.fist ? "GRAB" : "OPEN"),
       hand.x + 22,
       hand.y - 25
     );

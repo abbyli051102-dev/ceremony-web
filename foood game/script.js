@@ -1,45 +1,107 @@
-'use strict';
+/* =========================================
+   SECOND CHANCE BITES
+   食物的第二次机会
+========================================= */
 
 const ASSETS = {
-  bg: 'assets/bg.jpg',
-  soup: 'assets/soup.png',
-  pepper: 'assets/pepper.png',
-  eggplant: 'assets/eggplant.png',
-  beef: 'assets/beef.png',
-  avocado: 'assets/avocado.png',
-  mushroom: 'assets/mushroom.png',
-  chicken: 'assets/chicken.png',
-  potato: 'assets/potato.png',
-  greens: 'assets/greens.png',
-  cabbage: 'assets/cabbage.png',
-  corn: 'assets/corn.png',
-  tomato: 'assets/tomato.png',
-  cauliflower: 'assets/cauliflower.png'
+  bg: "assets/bg.jpg",
+  soup: "assets/soup.png",
+
+  pepper: "assets/pepper.png",
+  eggplant: "assets/eggplant.png",
+  beef: "assets/beef.png",
+  avocado: "assets/avocado.png",
+  mushroom: "assets/mushroom.png",
+  chicken: "assets/chicken.png",
+  potato: "assets/potato.png",
+  greens: "assets/greens.png",
+  cabbage: "assets/cabbage.png",
+  corn: "assets/corn.png",
+  tomato: "assets/tomato.png",
+  cauliflower: "assets/cauliflower.png"
+};
+
+const FOOD_REWARDS = [
+  { name: "蔊菜皮蛋", image: "assets/dish1.png" },
+  { name: "彩椒炒肉", image: "assets/dish2.png" },
+  { name: "牛油果减脂餐", image: "assets/dish4.png" },
+  { name: "肉末茄子", image: "assets/dish5.png" },
+  { name: "番茄炒蛋", image: "assets/dish6.png" },
+  { name: "花菜炒肉", image: "assets/dish7.png" },
+  { name: "小鸡炖蘑菇", image: "assets/dish8.png" }
+];
+
+const DARK_FOOD = {
+  name: "黑暗料理",
+  image: "assets/dish3.png"
 };
 
 const DESKTOP = {
   width: 1648,
   height: 928,
-  soup: { x: 380, y: 670, w: 880, h: 310 },
-  dropY: 745,
-  range: 280
+  soup: {
+    x: 380,
+    y: 670,
+    w: 880,
+    h: 310
+  }
 };
 
 const PORTRAIT = {
   width: 928,
   height: 1648,
-  soup: { x: 210, y: 1340, w: 508, h: 260 },
-  dropY: 1420,
-  range: 145
+  soup: {
+    x: 210,
+    y: 1340,
+    w: 508,
+    h: 260
+  }
 };
 
-const canvas = document.getElementById('canvas');
-const ctx = canvas.getContext('2d');
-const video = document.getElementById('video');
+const HAND_SETTINGS = {
+  leftColor: "#39B8FF",
+  rightColor: "#FF994A",
+  grabRadius: 1.15
+};
+
+const connections = [
+  [0,1],[1,2],[2,3],[3,4],
+  [0,5],[5,6],[6,7],[7,8],
+  [5,9],[9,10],[10,11],[11,12],
+  [9,13],[13,14],[14,15],[15,16],
+  [13,17],[17,18],[18,19],[19,20],
+  [0,17]
+];
+
+const kinds = [
+  "pepper",
+  "eggplant",
+  "beef",
+  "avocado",
+  "mushroom",
+  "chicken",
+  "potato",
+  "greens",
+  "cabbage",
+  "corn",
+  "tomato",
+  "cauliflower"
+];
+
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+
+const video = document.getElementById("video");
+const handPreview = document.getElementById("handPreview");
+const handCtx = handPreview.getContext("2d");
 
 const el = id => document.getElementById(id);
-const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
-const rand = (a, b) => a + Math.random() * (b - a);
+
+const clamp = (v, min, max) =>
+  Math.max(min, Math.min(max, v));
+
+const rand = (min, max) =>
+  min + Math.random() * (max - min);
 
 const images = {};
 
@@ -49,75 +111,90 @@ for (const [key, src] of Object.entries(ASSETS)) {
   images[key] = img;
 }
 
-const kinds = [
-  'pepper', 'eggplant', 'beef', 'avocado',
-  'mushroom', 'chicken', 'potato', 'greens',
-  'cabbage', 'corn', 'tomato', 'cauliflower'
-];
-
-const REWARDS = [
-  ['蔊菜皮蛋', 'assets/dish1.png'],
-  ['彩椒炒肉', 'assets/dish2.png'],
-  ['牛油果减脂餐', 'assets/dish4.png'],
-  ['肉末茄子', 'assets/dish5.png'],
-  ['番茄炒蛋', 'assets/dish6.png'],
-  ['花菜炒肉', 'assets/dish7.png'],
-  ['小鸡炖蘑菇', 'assets/dish8.png']
-];
-
-const BAD_REWARD = [
-  '黑暗料理',
-  'assets/dish3.png'
-];
-
-const CONNECTIONS = [
-  [0,1],[1,2],[2,3],[3,4],
-  [0,5],[5,6],[6,7],[7,8],
-  [5,9],[9,10],[10,11],[11,12],
-  [9,13],[13,14],[14,15],[15,16],
-  [13,17],[17,18],[18,19],[19,20],
-  [0,17]
-];
+/* ===== 游戏状态 ===== */
 
 let layout = DESKTOP;
+
 let items = [];
 let particles = [];
 let hands = [];
-let pointers = new Map();
-let handTracks = new Map();
 
-let mode = 'mouse';
+let mode = "mouse";
+
 let playing = false;
-let paused = false;
 let finished = false;
+let paused = false;
 
 let score = 0;
 let lives = 3;
 let remaining = 60;
 let elapsed = 0;
-let spawnTimer = 0.5;
+let spawnTimer = 0.6;
 let nextId = 0;
+
+let lastTime = performance.now();
+
+let feedback = "";
+let feedbackUntil = 0;
+
+const pointers = new Map();
+const handTracks = new Map();
+
+/* ===== 汤锅移动 ===== */
 
 let soupOffsetX = 0;
 let soupDirection = 1;
-let soupSpeed = 65;
 
-let lastTime = performance.now();
-let feedback = '';
-let feedbackUntil = 0;
+const soupStartSpeed = 65;
+const soupSpeed20 = 160;
+const soupSpeed40 = 280;
 
-let landmarker = null;
-let stream = null;
-let cameraBusy = false;
-let cameraErrorCount = 0;
-let lastVideoTime = -1;
+let soupSpeed = soupStartSpeed;
 
-// ===== 布局 =====
+function getSoupMoveRange() {
+  return layout === PORTRAIT ? 145 : 280;
+}
+
+function getSoupPosition() {
+  return {
+    x: layout.soup.x + soupOffsetX,
+    y: layout.soup.y,
+    w: layout.soup.w,
+    h: layout.soup.h
+  };
+}
+
+function updateSoupMovement(dt) {
+  const range = getSoupMoveRange();
+
+  if (elapsed < 20) {
+    soupSpeed = soupStartSpeed;
+  } else if (elapsed < 40) {
+    soupSpeed = soupSpeed20;
+  } else {
+    soupSpeed = soupSpeed40;
+  }
+
+  soupOffsetX += soupDirection * soupSpeed * dt;
+
+  if (soupOffsetX >= range) {
+    soupOffsetX = range;
+    soupDirection = -1;
+  }
+
+  if (soupOffsetX <= -range) {
+    soupOffsetX = -range;
+    soupDirection = 1;
+  }
+}
+
+/* ===== 横屏与竖屏 ===== */
 
 function getLayout() {
-  return innerHeight > innerWidth && innerWidth <= 800
-    ? PORTRAIT
-    : DESKTOP;
+  return (
+    innerHeight > innerWidth &&
+    innerWidth <= 800
+  ) ? PORTRAIT : DESKTOP;
 }
 
 function updateLayout() {
@@ -128,58 +205,50 @@ function updateLayout() {
   const old = layout;
   layout = next;
 
-  for (const it of items) {
-    it.x = it.x / old.width * next.width;
-    it.y = it.y / old.height * next.height;
-    it.held = null;
+  for (const item of items) {
+    item.x = item.x / old.width * next.width;
+    item.y = item.y / old.height * next.height;
+    item.held = null;
   }
 
+  soupOffsetX = 0;
   pointers.clear();
   handTracks.clear();
-
-  soupOffsetX = clamp(
-    soupOffsetX,
-    -layout.range,
-    layout.range
-  );
 }
 
-// ===== HUD =====
+window.addEventListener("resize", updateLayout);
+updateLayout();
+
+/* ===== 顶部信息 ===== */
 
 function updateHud() {
-  el('score').textContent = score.toLocaleString();
+  el("score").textContent = score.toLocaleString();
 
-  el('time').textContent = Math.max(
-    0,
-    Math.ceil(remaining)
-  );
+  el("time").textContent =
+    Math.max(0, Math.ceil(remaining));
 
-  el('spoiled').textContent =
-    items.filter(i => i.bad).length;
+  el("spoiled").textContent =
+    items.filter(item => item.bad).length;
 
-  el('lives').textContent =
-    '♥ '.repeat(Math.max(0, lives)) +
-    '♡ '.repeat(3 - Math.max(0, lives));
+  el("lives").textContent =
+    "♥ ".repeat(Math.max(0, lives)) +
+    "♡ ".repeat(Math.max(0, 3 - lives));
 }
 
-function status(text) {
-  el('message').textContent = text;
-}
-
-function flash(text) {
-  feedback = text;
+function flash(message) {
+  feedback = message;
   feedbackUntil = performance.now() + 1250;
-  status(text);
+  el("message").textContent = message;
 }
 
-// ===== 游戏开始与重置 =====
+/* ===== 游戏开始 / 重置 ===== */
 
-function resetGame() {
-  updateLayout();
+async function startGame(which) {
+  mode = which;
 
-  playing = true;
-  paused = false;
+  playing = false;
   finished = false;
+  paused = false;
 
   items = [];
   particles = [];
@@ -192,158 +261,117 @@ function resetGame() {
   lives = 3;
   remaining = 60;
   elapsed = 0;
-  spawnTimer = 0.5;
+  spawnTimer = 0.6;
   nextId = 0;
 
   soupOffsetX = 0;
   soupDirection = 1;
-  soupSpeed = 65;
+  soupSpeed = soupStartSpeed;
 
-  lastTime = performance.now();
-
-  el('modal').classList.add('hidden');
-  el('foodResult').classList.add('hidden');
-  el('pauseOverlay').classList.add('hidden');
-  el('pauseBtn').textContent = '⏸ 暂停';
+  el("modal").classList.add("hidden");
+  el("foodResult").classList.add("hidden");
+  el("pauseOverlay").classList.add("hidden");
+  el("pauseBtn").textContent = "⏸ 暂停";
 
   updateHud();
-}
 
-async function start(which) {
-  resetGame();
-  mode = which;
-
-  if (which === 'camera') {
-    playing = false;
-
-    status('正在连接摄像头与手势识别…');
+  if (which === "camera") {
+    el("message").textContent =
+      "正在启动摄像头与手势识别...";
 
     const ok = await enableCamera();
 
-    if (ok) {
-      playing = true;
-      lastTime = performance.now();
-    } else {
-      playing = false;
-      el('modal').classList.remove('hidden');
-
-      status(
-        '摄像头不可用，请检查权限或选择鼠标模式'
-      );
+    if (!ok) {
+      mode = "mouse";
+      el("message").textContent =
+        "摄像头未启动，请使用鼠标模式或重试";
+      return;
     }
   } else {
-    status(
-      '鼠标/触屏：拖动好食材入锅，坏食材向左右甩出'
-    );
-  }
-}
-
-// ===== 最终随机美食 =====
-
-function showFoodResult() {
-  if (!el('foodResult').classList.contains('hidden')) {
-    return;
+    el("message").textContent =
+      "拖动食材：新鲜入锅，变质扔向两侧";
   }
 
-  const reward = score < 500
-    ? BAD_REWARD
-    : REWARDS[Math.floor(Math.random() * REWARDS.length)];
-
-  el('resultFoodImage').src = reward[1];
-  el('resultFoodName').textContent = reward[0];
-
-  el('resultFinalScore').textContent =
-    score.toLocaleString();
-
-  el('resultFoodMessage').textContent =
-    score < 500
-      ? '积分不足500分，今天只能吃黑暗料理啦！'
-      : '恭喜！这是你今天努力拯救食物得到的美食！';
-
-  el('modal').classList.add('hidden');
-  el('pauseOverlay').classList.add('hidden');
-  el('foodResult').classList.remove('hidden');
+  lastTime = performance.now();
+  playing = true;
 }
 
-function endGame() {
-  if (finished) return;
-
-  playing = false;
-  paused = false;
-  finished = true;
-
-  showFoodResult();
-}
-
-// ===== 暂停 / 继续 =====
+/* ===== 暂停 ===== */
 
 function togglePause() {
   if (!playing || finished) return;
 
   paused = !paused;
 
-  el('pauseBtn').textContent =
-    paused ? '▶ 继续' : '⏸ 暂停';
-
-  el('pauseOverlay').classList.toggle(
-    'hidden',
+  el("pauseOverlay").classList.toggle(
+    "hidden",
     !paused
   );
 
+  el("pauseBtn").textContent =
+    paused ? "▶ 继续" : "⏸ 暂停";
+
   if (paused) {
-    for (const [id, p] of pointers) {
-      release(id, 0, 0, false);
+    // 清理抓取状态，避免暂停期间拖动物品
+    for (const item of items) {
+      if (item.held !== null) {
+        item.held = null;
+        item.vx = 0;
+        item.vy = Math.max(0, item.vy);
+      }
     }
 
     pointers.clear();
-
-    for (const [id, t] of handTracks) {
-      release(id, 0, 0, false);
-      t.closed = false;
-      t.holding = false;
-    }
+    handTracks.clear();
   }
 
   lastTime = performance.now();
 }
 
-// ===== 汤锅移动：每20秒加速 =====
+/* ===== 最终奖励 ===== */
 
-function updateSoupMovement(dt) {
-  soupSpeed =
-    elapsed < 20 ? 65 :
-    elapsed < 40 ? 160 : 280;
+function showFoodResult() {
+  let reward;
 
-  const range = layout.range;
-
-  soupOffsetX += soupDirection * soupSpeed * dt;
-
-  if (soupOffsetX >= range) {
-    soupOffsetX = range;
-    soupDirection = -1;
-  } else if (soupOffsetX <= -range) {
-    soupOffsetX = -range;
-    soupDirection = 1;
+  if (score < 500) {
+    reward = DARK_FOOD;
+  } else {
+    reward = FOOD_REWARDS[
+      Math.floor(Math.random() * FOOD_REWARDS.length)
+    ];
   }
+
+  el("resultFoodImage").src = reward.image;
+  el("resultFoodName").textContent = reward.name;
+
+  el("resultFinalScore").textContent =
+    score.toLocaleString();
+
+  el("resultFoodMessage").textContent =
+    score < 500
+      ? "食物拯救失败！今天只能吃黑暗料理啦！"
+      : "恭喜！这是你今天获得的美食奖励！";
+
+  el("modal").classList.add("hidden");
+  el("pauseOverlay").classList.add("hidden");
+  el("foodResult").classList.remove("hidden");
 }
 
-function getSoupPosition() {
-  return {
-    ...layout.soup,
-    x: layout.soup.x + soupOffsetX
-  };
+function endGame() {
+  if (finished) return;
+
+  playing = false;
+  finished = true;
+  paused = false;
+
+  showFoodResult();
 }
 
-// ===== 食材生成 =====
+/* ===== 食材生成 ===== */
 
-function spawn() {
-  const size = layout === PORTRAIT
-    ? rand(145, 185)
-    : rand(155, 215);
-
-  const margin = layout === PORTRAIT
-    ? 110
-    : 170;
+function spawnFood() {
+  const mobile = layout === PORTRAIT;
+  const margin = mobile ? 110 : 170;
 
   items.push({
     id: ++nextId,
@@ -355,26 +383,32 @@ function spawn() {
     bad: Math.random() < 0.49,
 
     x: rand(margin, layout.width - margin),
-    y: -size,
+    y: -200,
 
     vx: rand(-40, 40),
     vy: rand(75, 105) + elapsed * 2.8,
 
-    rot: rand(-0.2, 0.2),
+    size: mobile
+      ? rand(145, 185)
+      : rand(155, 215),
+
+    rotation: rand(-0.2, 0.2),
     spin: rand(-0.5, 0.5),
 
-    size,
     held: null,
-    age: 0,
-    thrown: false,
-    throwDirection: 0
+
+    // 只有被玩家抓过的食材才能扔向两侧
+    touched: false,
+
+    // 松手后允许向左右飞出
+    thrown: false
   });
 }
 
-// ===== 粒子效果 =====
+/* ===== 粒子反馈 ===== */
 
-function burst(x, y, good) {
-  for (let i = 0; i < 18; i++) {
+function burst(x, y, correct) {
+  for (let i = 0; i < 20; i++) {
     particles.push({
       x,
       y,
@@ -383,40 +417,27 @@ function burst(x, y, good) {
       life: rand(0.4, 0.85),
       max: 0.85,
       r: rand(3, 8),
-      color: good ? '#7bba63' : '#d76255'
+      color: correct ? "#7bba63" : "#d76255"
     });
   }
 }
 
-// ===== 食物分类 =====
+/* ===== 食物分类 ===== */
 
-function removeItem(item) {
-  items = items.filter(i => i !== item);
-}
-
-function resolveItem(item, correct) {
+function finishItem(item, correct, message, points) {
   if (!items.includes(item)) return;
 
   if (correct) {
-    score += item.bad ? 150 : 100;
-
-    flash(
-      item.bad
-        ? '变质食物成功丢弃 +150'
-        : '新鲜食材入锅 +100'
-    );
+    score += points;
   } else {
     lives--;
-
-    flash(
-      item.bad
-        ? '变质食物进入汤锅！'
-        : '新鲜食物被扔掉了！'
-    );
   }
 
   burst(item.x, item.y, correct);
-  removeItem(item);
+  flash(message);
+
+  items = items.filter(i => i !== item);
+
   updateHud();
 
   if (lives <= 0) {
@@ -425,41 +446,65 @@ function resolveItem(item, correct) {
 }
 
 function classify(item) {
-  if (!playing || paused) return false;
-
   const soup = getSoupPosition();
 
+  const soupLeft = soup.x + soup.w * 0.15;
+  const soupRight = soup.x + soup.w * 0.85;
+  const soupTop = soup.y + soup.h * 0.25;
+
   const inSoup =
-    item.y >= soup.y + soup.h * 0.25 &&
-    item.y <= soup.y + soup.h * 0.85 &&
-    item.x >= soup.x + soup.w * 0.15 &&
-    item.x <= soup.x + soup.w * 0.85;
+    item.x >= soupLeft &&
+    item.x <= soupRight &&
+    item.y >= soupTop &&
+    item.y <= layout.height + item.size;
 
-  // 只有主动甩出/拖出才允许左右丢弃
-  const side = layout.width * 0.12;
+  // 只允许抓取过并已松手的食材触发侧边丢弃
+  const sideZone = layout.width * 0.12;
 
-  const outSide =
-    item.x < side ||
-    item.x > layout.width - side;
+  const thrownAway =
+    item.touched &&
+    item.held === null &&
+    item.thrown &&
+    (
+      item.x < sideZone ||
+      item.x > layout.width - sideZone
+    ) &&
+    item.y > layout.height * 0.15;
 
-  if (item.thrown && outSide) {
-    resolveItem(item, item.bad);
+  if (thrownAway) {
+    finishItem(
+      item,
+      item.bad,
+      item.bad
+        ? "✓ 变质食物成功丢弃 +150"
+        : "✗ 新鲜食物被扔掉了！",
+      150
+    );
+
     return true;
   }
 
-  if (inSoup) {
-    resolveItem(item, !item.bad);
+  if (inSoup && item.held === null) {
+    finishItem(
+      item,
+      !item.bad,
+      item.bad
+        ? "✗ 变质食物进入汤锅！"
+        : "✓ 新鲜食材进入汤锅 +100",
+      100
+    );
+
     return true;
   }
 
   return false;
 }
 
-// ===== 抓取和释放 =====
+/* ===== 抓取与释放 ===== */
 
-function closest(x, y) {
+function nearestFood(x, y) {
   let best = null;
-  let dist = Infinity;
+  let distance = Infinity;
 
   for (const item of items) {
     if (item.held !== null) continue;
@@ -470,11 +515,11 @@ function closest(x, y) {
     );
 
     if (
-      d < item.size * 1.15 &&
-      d < dist
+      d < item.size * HAND_SETTINGS.grabRadius &&
+      d < distance
     ) {
       best = item;
-      dist = d;
+      distance = d;
     }
   }
 
@@ -482,15 +527,18 @@ function closest(x, y) {
 }
 
 function grab(id, x, y) {
-  if (!playing || paused) return null;
+  // 一只手只能抓一个食材
+  const existing = items.find(
+    item => item.held === id
+  );
 
-  const already = items.find(i => i.held === id);
-  if (already) return already;
+  if (existing) return existing;
 
-  const item = closest(x, y);
+  const item = nearestFood(x, y);
 
   if (item) {
     item.held = id;
+    item.touched = true;
     item.thrown = false;
   }
 
@@ -498,86 +546,76 @@ function grab(id, x, y) {
 }
 
 function moveHeld(id, x, y) {
-  if (paused) return;
+  const item = items.find(
+    i => i.held === id
+  );
 
-  for (const item of items) {
-    if (item.held === id) {
-      item.x = clamp(
-        x,
-        -item.size,
-        layout.width + item.size
-      );
+  if (!item) return;
 
-      item.y = clamp(
-        y,
-        0,
-        layout.height
-      );
-    }
-  }
+  item.x = clamp(
+    x,
+    -item.size,
+    layout.width + item.size
+  );
+
+  item.y = clamp(
+    y,
+    0,
+    layout.height
+  );
 }
 
-function release(id, vx = 0, vy = 0, allowThrow = true) {
+function release(id, vx = 0, vy = 0) {
   for (const item of [...items]) {
     if (item.held !== id) continue;
 
     item.held = null;
+    item.thrown = true;
 
-    item.vx = allowThrow
-      ? clamp(vx * 1.4, -1600, 1600)
-      : 0;
+    // 水平甩出，保留向左右扔的功能
+    item.vx = clamp(vx * 1.4, -1600, 1600);
 
-    item.vy = allowThrow
-      ? Math.max(80, vy)
-      : Math.max(80, item.vy);
+    // 取消向上回弹
+    item.vy = Math.max(80, vy);
 
-    item.thrown =
-      allowThrow &&
-      (
-        Math.abs(item.vx) > 170 ||
-        item.x < layout.width * 0.12 ||
-        item.x > layout.width * 0.88
-      );
-
-    item.throwDirection = Math.sign(item.vx);
-
-    if (playing && !paused) {
-      classify(item);
-    }
+    classify(item);
   }
 }
 
-// ===== 鼠标与触屏 =====
+/* ===== 鼠标 / 触屏 ===== */
 
-function canvasPos(ev) {
-  const r = canvas.getBoundingClientRect();
+function pointerPos(event) {
+  const rect = canvas.getBoundingClientRect();
 
   const scale = Math.min(
-    r.width / layout.width,
-    r.height / layout.height
+    rect.width / layout.width,
+    rect.height / layout.height
   );
 
-  const ox = (r.width - layout.width * scale) / 2;
-  const oy = (r.height - layout.height * scale) / 2;
+  const offsetX =
+    (rect.width - layout.width * scale) / 2;
+
+  const offsetY =
+    (rect.height - layout.height * scale) / 2;
 
   return {
-    x: (ev.clientX - r.left - ox) / scale,
-    y: (ev.clientY - r.top - oy) / scale
+    x: (event.clientX - rect.left - offsetX) / scale,
+    y: (event.clientY - rect.top - offsetY) / scale
   };
 }
 
-canvas.addEventListener('pointerdown', ev => {
-  if (!playing || paused || mode !== 'mouse') return;
+canvas.addEventListener("pointerdown", event => {
+  if (!playing || paused || mode !== "mouse") return;
 
-  canvas.setPointerCapture(ev.pointerId);
+  canvas.setPointerCapture(event.pointerId);
 
-  const p = canvasPos(ev);
-  const id = 'mouse' + ev.pointerId;
+  const p = pointerPos(event);
+  const id = "mouse-" + event.pointerId;
+
   const obj = grab(id, p.x, p.y);
 
-  pointers.set(ev.pointerId, {
+  pointers.set(event.pointerId, {
     ...p,
-    id,
     t: performance.now(),
     obj,
     vx: 0,
@@ -585,12 +623,13 @@ canvas.addEventListener('pointerdown', ev => {
   });
 });
 
-canvas.addEventListener('pointermove', ev => {
-  const p = pointers.get(ev.pointerId);
+canvas.addEventListener("pointermove", event => {
+  if (!playing || paused || mode !== "mouse") return;
 
-  if (!p || paused) return;
+  const p = pointers.get(event.pointerId);
+  if (!p) return;
 
-  const q = canvasPos(ev);
+  const q = pointerPos(event);
   const now = performance.now();
 
   const dt = Math.max(
@@ -598,39 +637,189 @@ canvas.addEventListener('pointermove', ev => {
     (now - p.t) / 1000
   );
 
-  p.vx = clamp(
-    (q.x - p.x) / dt,
-    -1400,
-    1400
-  );
-
-  p.vy = clamp(
-    (q.y - p.y) / dt,
-    -1400,
-    1400
-  );
+  p.vx = (q.x - p.x) / dt;
+  p.vy = (q.y - p.y) / dt;
 
   p.x = q.x;
   p.y = q.y;
   p.t = now;
 
-  moveHeld(p.id, q.x, q.y);
+  if (p.obj) {
+    moveHeld(
+      "mouse-" + event.pointerId,
+      q.x,
+      q.y
+    );
+  }
 });
 
-function pointerUp(ev) {
-  const p = pointers.get(ev.pointerId);
+function pointerUp(event) {
+  const p = pointers.get(event.pointerId);
   if (!p) return;
 
-  release(p.id, p.vx, p.vy);
-  pointers.delete(ev.pointerId);
+  if (playing && !paused) {
+    release(
+      "mouse-" + event.pointerId,
+      p.vx,
+      p.vy
+    );
+  }
+
+  pointers.delete(event.pointerId);
 }
 
-canvas.addEventListener('pointerup', pointerUp);
-canvas.addEventListener('pointercancel', pointerUp);
+canvas.addEventListener("pointerup", pointerUp);
+canvas.addEventListener("pointercancel", pointerUp);
 
-// ===== 手势判断 =====
+/* ===== MediaPipe 摄像头 ===== */
 
-function gesture(points) {
+let handModel = null;
+let stream = null;
+let cameraBusy = false;
+let cameraOn = false;
+let lastVideoTime = -1;
+let trackingErrors = 0;
+
+async function enableCamera() {
+  if (cameraBusy) return false;
+
+  cameraBusy = true;
+
+  const btn = el("cameraBtn");
+
+  btn.disabled = true;
+  btn.textContent = "📷 摄像头加载中...";
+
+  try {
+    if (
+      !window.isSecureContext ||
+      !navigator.mediaDevices?.getUserMedia
+    ) {
+      throw new Error(
+        "请通过 HTTPS 或 localhost 打开游戏"
+      );
+    }
+
+    if (!stream || !stream.active) {
+      stream = await navigator.mediaDevices.getUserMedia({
+        audio: false,
+        video: {
+          facingMode: "user",
+          width: { ideal: 640 },
+          height: { ideal: 480 }
+        }
+      });
+
+      video.srcObject = stream;
+    }
+
+    video.muted = true;
+    video.playsInline = true;
+
+    await video.play();
+
+    video.style.display = "block";
+    handPreview.style.display = "block";
+
+    if (!handModel) {
+      const cdn =
+        "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
+
+      const visionModule = await import(cdn + "/+esm");
+
+      const vision =
+        await visionModule.FilesetResolver.forVisionTasks(
+          cdn + "/wasm"
+        );
+
+      const options = {
+        baseOptions: {
+          modelAssetPath:
+            "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
+          delegate: "GPU"
+        },
+
+        runningMode: "VIDEO",
+        numHands: 2,
+
+        minHandDetectionConfidence: 0.45,
+        minHandPresenceConfidence: 0.45,
+        minTrackingConfidence: 0.45
+      };
+
+      try {
+        handModel =
+          await visionModule.HandLandmarker.createFromOptions(
+            vision,
+            options
+          );
+      } catch (error) {
+        options.baseOptions.delegate = "CPU";
+
+        handModel =
+          await visionModule.HandLandmarker.createFromOptions(
+            vision,
+            options
+          );
+      }
+    }
+
+    cameraOn = true;
+    lastVideoTime = -1;
+    trackingErrors = 0;
+
+    btn.textContent = "✓ 摄像头已连接";
+
+    el("message").textContent =
+      "摄像头已就绪：握拳抓取，张掌释放";
+
+    return true;
+
+  } catch (error) {
+    console.error(error);
+
+    btn.textContent = "📷 重试摄像头";
+
+    el("message").textContent =
+      "摄像头启动失败：" + error.message;
+
+    cameraOn = false;
+    return false;
+
+  } finally {
+    cameraBusy = false;
+    btn.disabled = false;
+  }
+}
+
+/* ===== 手势判断 ===== */
+
+function fingerAngle(a, b, c) {
+  const abx = a.x - b.x;
+  const aby = a.y - b.y;
+  const abz = (a.z || 0) - (b.z || 0);
+
+  const cbx = c.x - b.x;
+  const cby = c.y - b.y;
+  const cbz = (c.z || 0) - (b.z || 0);
+
+  const dot =
+    abx * cbx + aby * cby + abz * cbz;
+
+  const length =
+    Math.hypot(abx, aby, abz) *
+    Math.hypot(cbx, cby, cbz);
+
+  const cosine = clamp(
+    dot / Math.max(0.000001, length),
+    -1,
+    1
+  );
+
+  return Math.acos(cosine) * 180 / Math.PI;
+}
+
+function getHandGesture(points) {
   const fingers = [
     [5, 6, 8],
     [9, 10, 12],
@@ -641,39 +830,15 @@ function gesture(points) {
   let folded = 0;
   let extended = 0;
 
-  for (const [m, p, t] of fingers) {
-    const a = points[m];
-    const b = points[p];
-    const c = points[t];
-
-    const u = [
-      a.x - b.x,
-      a.y - b.y,
-      (a.z || 0) - (b.z || 0)
-    ];
-
-    const v = [
-      c.x - b.x,
-      c.y - b.y,
-      (c.z || 0) - (b.z || 0)
-    ];
-
-    const dot =
-      u[0] * v[0] +
-      u[1] * v[1] +
-      u[2] * v[2];
-
-    const len = Math.max(
-      1e-7,
-      Math.hypot(...u) * Math.hypot(...v)
+  for (const [mcp, pip, tip] of fingers) {
+    const angle = fingerAngle(
+      points[mcp],
+      points[pip],
+      points[tip]
     );
 
-    const ang =
-      Math.acos(clamp(dot / len, -1, 1)) *
-      180 / Math.PI;
-
-    if (ang < 120) folded++;
-    if (ang > 145) extended++;
+    if (angle < 115) folded++;
+    if (angle > 150) extended++;
   }
 
   return {
@@ -682,173 +847,48 @@ function gesture(points) {
   };
 }
 
-// ===== 摄像头启动 =====
-
-function cameraErrorMessage(e) {
-  if (!window.isSecureContext) {
-    return '摄像头需要 HTTPS 或 localhost';
-  }
-
-  const name = e?.name || '';
-
-  if (name === 'NotAllowedError') {
-    return '摄像头权限被拒绝，请在浏览器地址栏允许摄像头';
-  }
-
-  if (name === 'NotFoundError') {
-    return '未找到摄像头';
-  }
-
-  if (name === 'NotReadableError') {
-    return '摄像头可能被其他软件占用';
-  }
-
-  return '摄像头启动失败：' +
-    (e?.message || String(e));
+function getHandColor(label) {
+  return label === "Left"
+    ? HAND_SETTINGS.leftColor
+    : HAND_SETTINGS.rightColor;
 }
 
-async function enableCamera() {
-  if (cameraBusy) return false;
-
-  cameraBusy = true;
-
-  const btn = el('cameraBtn');
-  btn.disabled = true;
-  btn.textContent = '📷 连接中…';
-
-  try {
-    if (
-      !window.isSecureContext ||
-      !navigator.mediaDevices?.getUserMedia
-    ) {
-      throw Error('需要 HTTPS 或 localhost');
-    }
-
-    if (!stream || !stream.active) {
-      stream = await navigator.mediaDevices.getUserMedia({
-        audio: false,
-        video: {
-          facingMode: 'user',
-          width: { ideal: 640 },
-          height: { ideal: 480 },
-          frameRate: { ideal: 30 }
-        }
-      });
-
-      video.srcObject = stream;
-      video.muted = true;
-      video.playsInline = true;
-    }
-
-    await video.play();
-    video.style.display = 'block';
-
-    if (!landmarker) {
-      const cdn =
-        'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
-
-      const mod = await import(cdn + '/+esm');
-
-      const vision =
-        await mod.FilesetResolver.forVisionTasks(
-          cdn + '/wasm'
-        );
-
-      const options = {
-        baseOptions: {
-          modelAssetPath:
-            'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',
-          delegate: 'GPU'
-        },
-
-        runningMode: 'VIDEO',
-        numHands: 2,
-
-        minHandDetectionConfidence: 0.45,
-        minHandPresenceConfidence: 0.45,
-        minTrackingConfidence: 0.45
-      };
-
-      try {
-        landmarker =
-          await mod.HandLandmarker.createFromOptions(
-            vision,
-            options
-          );
-      } catch (e) {
-        options.baseOptions.delegate = 'CPU';
-
-        landmarker =
-          await mod.HandLandmarker.createFromOptions(
-            vision,
-            options
-          );
-      }
-    }
-
-    mode = 'camera';
-    lastVideoTime = -1;
-    cameraErrorCount = 0;
-
-    btn.textContent = '✓ 摄像头已连接';
-
-    status(
-      '摄像头已就绪：握拳抓取，张掌释放，左右甩出坏食材'
-    );
-
-    return true;
-
-  } catch (e) {
-    console.error(e);
-    status('⚠ ' + cameraErrorMessage(e));
-    btn.textContent = '📷 重试摄像头';
-    return false;
-
-  } finally {
-    cameraBusy = false;
-    btn.disabled = false;
-  }
-}
-
-// ===== MediaPipe 双手识别 =====
+/* ===== 双手检测 ===== */
 
 function detectHands(now) {
-  if (
-    !landmarker ||
-    !stream ||
-    video.readyState < 2 ||
-    video.currentTime === lastVideoTime
-  ) {
-    return;
-  }
+  if (!cameraOn || !handModel) return;
+  if (video.readyState < 2) return;
+  if (video.currentTime === lastVideoTime) return;
 
   lastVideoTime = video.currentTime;
 
   try {
-    const result =
-      landmarker.detectForVideo(video, now);
+    const result = handModel.detectForVideo(
+      video,
+      now
+    );
 
-    cameraErrorCount = 0;
+    trackingErrors = 0;
     hands = [];
+
+    handCtx.clearRect(
+      0,
+      0,
+      handPreview.width,
+      handPreview.height
+    );
 
     const active = new Set();
 
-    for (
-      let i = 0;
-      i < (result.landmarks || []).length;
-      i++
-    ) {
-      const points = result.landmarks[i];
+    const landmarks = result.landmarks || [];
 
+    landmarks.forEach((points, index) => {
       const label =
-        result.handednesses?.[i]?.[0]
-          ?.categoryName || String(i);
+        result.handednesses?.[index]?.[0]
+          ?.categoryName || `Hand${index}`;
 
-      const id = 'hand-' + label;
-
-      const color = label === 'Left'
-        ? '#39B8FF'
-        : '#FF994A';
+      const id = "hand-" + label;
+      const color = getHandColor(label);
 
       active.add(id);
 
@@ -857,315 +897,381 @@ function detectHands(now) {
       const x = (1 - palm.x) * layout.width;
       const y = palm.y * layout.height;
 
-      let t = handTracks.get(id) || {
-        x,
-        y,
-        t: now,
-        closed: false,
-        vx: 0,
-        vy: 0,
-        holding: false
-      };
+      let track = handTracks.get(id);
 
-      const g = gesture(points);
+      if (!track) {
+        track = {
+          x,
+          y,
+          t: now,
+          closed: false,
+          vx: 0,
+          vy: 0
+        };
+      }
 
-      const fist = g.open
+      const gesture = getHandGesture(points);
+
+      // 明确张掌时立即释放
+      const fist = gesture.open
         ? false
-        : g.fist
+        : gesture.fist
           ? true
-          : t.closed;
+          : track.closed;
 
       const dt = Math.max(
         0.016,
-        (now - t.t) / 1000
+        (now - track.t) / 1000
       );
 
-      const vx = clamp(
-        (x - t.x) / dt,
+      const instantVx = clamp(
+        (x - track.x) / dt,
         -1300,
         1300
       );
 
-      const vy = clamp(
-        (y - t.y) / dt,
+      const instantVy = clamp(
+        (y - track.y) / dt,
         -1300,
         1300
       );
 
-      t.vx = t.vx * 0.35 + vx * 0.65;
-      t.vy = t.vy * 0.35 + vy * 0.65;
+      track.vx =
+        track.vx * 0.35 +
+        instantVx * 0.65;
 
-      t.x = x;
-      t.y = y;
-      t.t = now;
+      track.vy =
+        track.vy * 0.35 +
+        instantVy * 0.65;
 
-      if (
-        playing &&
-        !paused &&
-        mode === 'camera'
-      ) {
-        if (fist) {
-          const held = grab(id, x, y);
+      // 不做弹性平滑，直接跟随
+      track.x = x;
+      track.y = y;
+      track.t = now;
 
-          if (held) {
-            moveHeld(id, x, y);
-            t.holding = true;
-          }
+      if (playing && !paused && mode === "camera") {
+        const heldItem = items.find(
+          item => item.held === id
+        );
+
+        // 持续握拳时，没有抓到可继续尝试
+        if (fist && !heldItem) {
+          grab(id, track.x, track.y);
         }
 
-        if (!fist && t.closed) {
-          release(id, t.vx, t.vy);
-          t.holding = false;
+        if (fist) {
+          moveHeld(id, track.x, track.y);
+        }
+
+        if (!fist && track.closed) {
+          release(
+            id,
+            track.vx,
+            track.vy
+          );
         }
       }
 
-      t.closed = fist;
-
-      handTracks.set(id, t);
+      track.closed = fist;
+      handTracks.set(id, track);
 
       hands.push({
         points,
-        x,
-        y,
+        x: track.x,
+        y: track.y,
         fist,
         label,
         color
       });
-    }
 
-    for (const [id, t] of handTracks) {
+      // 摄像头预览骨骼
+      handCtx.strokeStyle = color;
+      handCtx.lineWidth = 3;
+
+      for (const [a, b] of connections) {
+        handCtx.beginPath();
+
+        handCtx.moveTo(
+          (1 - points[a].x) * 320,
+          points[a].y * 240
+        );
+
+        handCtx.lineTo(
+          (1 - points[b].x) * 320,
+          points[b].y * 240
+        );
+
+        handCtx.stroke();
+      }
+
+      for (const point of points) {
+        handCtx.fillStyle = "#FFFFFF";
+        handCtx.beginPath();
+
+        handCtx.arc(
+          (1 - point.x) * 320,
+          point.y * 240,
+          2.5,
+          0,
+          Math.PI * 2
+        );
+
+        handCtx.fill();
+      }
+    });
+
+    // 手离开镜头后清除旧状态
+    for (const [id, track] of handTracks) {
       if (
         !active.has(id) &&
-        now - t.t > 250
+        now - track.t > 250
       ) {
         if (playing && !paused) {
-          release(id, 0, 0, false);
+          release(id, 0, 80);
         }
 
         handTracks.delete(id);
       }
     }
 
-  } catch (e) {
-    cameraErrorCount++;
+  } catch (error) {
+    trackingErrors++;
 
-    if (cameraErrorCount === 1) {
-      console.warn('Hand tracking:', e);
+    if (trackingErrors === 1) {
+      console.error("手势识别错误：", error);
     }
   }
 }
 
-// ===== 绘制工具 =====
+/* ===== 绘制手部骨骼 ===== */
+
+function drawHands() {
+  for (const hand of hands) {
+    ctx.save();
+
+    ctx.strokeStyle = hand.color;
+    ctx.lineWidth = 5;
+    ctx.shadowColor = hand.color;
+    ctx.shadowBlur = 12;
+
+    for (const [a, b] of connections) {
+      const p = hand.points[a];
+      const q = hand.points[b];
+
+      ctx.beginPath();
+
+      ctx.moveTo(
+        (1 - p.x) * layout.width,
+        p.y * layout.height
+      );
+
+      ctx.lineTo(
+        (1 - q.x) * layout.width,
+        q.y * layout.height
+      );
+
+      ctx.stroke();
+    }
+
+    for (const point of hand.points) {
+      ctx.fillStyle = "#FFFFFF";
+      ctx.beginPath();
+
+      ctx.arc(
+        (1 - point.x) * layout.width,
+        point.y * layout.height,
+        4,
+        0,
+        Math.PI * 2
+      );
+
+      ctx.fill();
+    }
+
+    ctx.shadowBlur = 0;
+    ctx.font = "bold 21px sans-serif";
+    ctx.fillStyle = hand.color;
+
+    const name =
+      hand.label === "Left"
+        ? "LEFT"
+        : hand.label === "Right"
+          ? "RIGHT"
+          : "HAND";
+
+    ctx.fillText(
+      name + " · " +
+      (hand.fist ? "GRAB" : "OPEN"),
+      hand.x + 22,
+      hand.y - 25
+    );
+
+    ctx.restore();
+  }
+}
+
+/* ===== 绘制图片 ===== */
 
 function drawImage(key, x, y, w, h) {
-  const im = images[key];
+  const img = images[key];
 
-  if (im?.complete && im.naturalWidth) {
-    ctx.drawImage(im, x, y, w, h);
+  if (!img?.complete || !img.naturalWidth) {
+    return;
   }
+
+  ctx.drawImage(img, x, y, w, h);
 }
 
-function drawHand(hand) {
-  ctx.save();
+function drawBackground() {
+  const img = images.bg;
 
-  ctx.strokeStyle = hand.color;
-  ctx.lineWidth = 5;
-  ctx.shadowColor = hand.color;
-  ctx.shadowBlur = 10;
+  if (!img?.complete || !img.naturalWidth) return;
 
-  for (const [a, b] of CONNECTIONS) {
-    ctx.beginPath();
-
-    ctx.moveTo(
-      (1 - hand.points[a].x) * layout.width,
-      hand.points[a].y * layout.height
-    );
-
-    ctx.lineTo(
-      (1 - hand.points[b].x) * layout.width,
-      hand.points[b].y * layout.height
-    );
-
-    ctx.stroke();
-  }
-
-  ctx.shadowBlur = 0;
-
-  for (const p of hand.points) {
-    ctx.fillStyle = '#fff';
-    ctx.beginPath();
-
-    ctx.arc(
-      (1 - p.x) * layout.width,
-      p.y * layout.height,
-      4,
-      0,
-      Math.PI * 2
-    );
-
-    ctx.fill();
-  }
-
-  ctx.font = 'bold 20px sans-serif';
-  ctx.fillStyle = hand.color;
-
-  ctx.fillText(
-    (hand.label === 'Left' ? 'LEFT' : 'RIGHT') +
-    ' · ' +
-    (hand.fist ? 'GRAB' : 'OPEN'),
-    hand.x + 22,
-    hand.y - 24
-  );
-
-  ctx.restore();
-}
-
-// ===== 绘制游戏画面 =====
-
-function draw() {
-  const r = canvas.getBoundingClientRect();
-  const dpr = devicePixelRatio || 1;
-
-  canvas.width = Math.max(
-    1,
-    Math.round(r.width * dpr)
-  );
-
-  canvas.height = Math.max(
-    1,
-    Math.round(r.height * dpr)
-  );
-
-  const scale = Math.min(
-    r.width / layout.width,
-    r.height / layout.height
-  );
-
-  const ox = (r.width - layout.width * scale) / 2;
-  const oy = (r.height - layout.height * scale) / 2;
-
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-
-  ctx.clearRect(0, 0, r.width, r.height);
-
-  ctx.fillStyle = '#faf1d7';
-  ctx.fillRect(0, 0, r.width, r.height);
-
-  ctx.setTransform(
-    dpr * scale,
-    0,
-    0,
-    dpr * scale,
-    dpr * ox,
-    dpr * oy
-  );
-
-  // 背景
   if (layout === DESKTOP) {
     drawImage(
-      'bg',
+      "bg",
       0,
       0,
       layout.width,
       layout.height
     );
   } else {
-    const im = images.bg;
+    const scale = Math.max(
+      layout.width / img.width,
+      layout.height / img.height
+    );
 
-    if (im?.naturalWidth) {
-      const s = Math.max(
-        layout.width / im.width,
-        layout.height / im.height
+    const w = img.width * scale;
+    const h = img.height * scale;
+
+    ctx.drawImage(
+      img,
+      (layout.width - w) / 2,
+      (layout.height - h) / 2,
+      w,
+      h
+    );
+  }
+}
+
+function drawFood(item) {
+  ctx.save();
+
+  ctx.translate(item.x, item.y);
+  ctx.rotate(item.rotation);
+
+  const img = images[item.key];
+
+  const iw = img?.naturalWidth || 1;
+  const ih = img?.naturalHeight || 1;
+
+  const aspect = iw / ih;
+
+  let w = item.size * (
+    aspect > 1 ? 1.22 : 1.05
+  );
+
+  let h = w / aspect;
+
+  if (h > item.size * 1.45) {
+    h = item.size * 1.45;
+    w = h * aspect;
+  }
+
+  ctx.shadowColor = "#685e4145";
+  ctx.shadowBlur = 12;
+
+  if (item.bad) {
+    ctx.filter =
+      "brightness(0.57) saturate(0.65)";
+  }
+
+  drawImage(
+    item.key,
+    -w / 2,
+    -h / 2,
+    w,
+    h
+  );
+
+  ctx.filter = "none";
+  ctx.shadowBlur = 0;
+
+  if (item.bad) {
+    ctx.fillStyle = "#786c58";
+
+    for (let k = 0; k < 4; k++) {
+      ctx.beginPath();
+
+      ctx.arc(
+        Math.sin(k * 17 + item.id) * w * 0.28,
+        Math.cos(k * 13 + item.id) * h * 0.25,
+        5 + k % 3 * 2,
+        0,
+        Math.PI * 2
       );
 
-      const w = im.width * s;
-      const h = im.height * s;
-
-      ctx.drawImage(
-        im,
-        (layout.width - w) / 2,
-        (layout.height - h) / 2,
-        w,
-        h
-      );
+      ctx.fill();
     }
   }
 
-  // 移动汤锅
+  ctx.restore();
+}
+
+/* ===== 绘制游戏 ===== */
+
+function draw() {
+  const rect = canvas.getBoundingClientRect();
+
+  const dpr = window.devicePixelRatio || 1;
+
+  canvas.width = Math.round(rect.width * dpr);
+  canvas.height = Math.round(rect.height * dpr);
+
+  const scale = Math.min(
+    rect.width / layout.width,
+    rect.height / layout.height
+  );
+
+  const offsetX =
+    (rect.width - layout.width * scale) / 2;
+
+  const offsetY =
+    (rect.height - layout.height * scale) / 2;
+
+  ctx.setTransform(
+    dpr * scale,
+    0,
+    0,
+    dpr * scale,
+    dpr * offsetX,
+    dpr * offsetY
+  );
+
+  ctx.clearRect(
+    -layout.width,
+    -layout.height,
+    layout.width * 3,
+    layout.height * 3
+  );
+
+  drawBackground();
+
+  // 只保留移动汤锅
   const soup = getSoupPosition();
 
   drawImage(
-    'soup',
+    "soup",
     soup.x,
     soup.y,
     soup.w,
     soup.h
   );
 
-  // 食材
   for (const item of items) {
-    ctx.save();
-
-    ctx.translate(item.x, item.y);
-    ctx.rotate(item.rot);
-
-    const im = images[item.key];
-
-    const aspect =
-      (im?.naturalWidth || 1) /
-      (im?.naturalHeight || 1);
-
-    let w = item.size * (
-      aspect > 1 ? 1.22 : 1.05
-    );
-
-    let h = w / aspect;
-
-    if (h > item.size * 1.45) {
-      h = item.size * 1.45;
-      w = h * aspect;
-    }
-
-    ctx.shadowColor = '#685e4145';
-    ctx.shadowBlur = 12;
-
-    if (item.bad) {
-      ctx.filter = 'brightness(.57) saturate(.65)';
-    }
-
-    drawImage(
-      item.key,
-      -w / 2,
-      -h / 2,
-      w,
-      h
-    );
-
-    ctx.filter = 'none';
-    ctx.shadowBlur = 0;
-
-    if (item.bad) {
-      ctx.fillStyle = '#786c58';
-
-      for (let k = 0; k < 4; k++) {
-        ctx.beginPath();
-
-        ctx.arc(
-          Math.sin(k * 17 + item.id) * w * 0.28,
-          Math.cos(k * 13 + item.id) * h * 0.25,
-          5 + k % 3 * 2,
-          0,
-          Math.PI * 2
-        );
-
-        ctx.fill();
-      }
-    }
-
-    ctx.restore();
+    drawFood(item);
   }
 
-  // 粒子
   for (const p of particles) {
     ctx.globalAlpha = clamp(
       p.life / p.max,
@@ -1175,59 +1281,53 @@ function draw() {
 
     ctx.fillStyle = p.color;
     ctx.beginPath();
-
-    ctx.arc(
-      p.x,
-      p.y,
-      p.r,
-      0,
-      Math.PI * 2
-    );
-
+    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
     ctx.fill();
   }
 
   ctx.globalAlpha = 1;
 
-  // 手势骨骼
-  if (mode === 'camera') {
-    hands.forEach(drawHand);
+  if (mode === "camera") {
+    drawHands();
   }
 
-  // 提示消息
-  if (performance.now() < feedbackUntil) {
-    ctx.fillStyle = '#fffdf1e8';
+  if (
+    !paused &&
+    performance.now() < feedbackUntil
+  ) {
+    const centerX = layout.width / 2;
+    const boxY = layout.height * 0.3;
+
+    ctx.fillStyle = "#fffdf1e8";
     ctx.beginPath();
 
     ctx.roundRect(
-      layout.width * 0.19,
-      layout.height * 0.28,
-      layout.width * 0.62,
+      centerX - 335,
+      boxY,
+      670,
       72,
       22
     );
 
     ctx.fill();
 
-    ctx.textAlign = 'center';
-    ctx.fillStyle = '#526b42';
-    ctx.font = 'bold 28px sans-serif';
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#526b42";
+    ctx.font = "bold 30px sans-serif";
 
     ctx.fillText(
       feedback,
-      layout.width / 2,
-      layout.height * 0.28 + 46
+      centerX,
+      boxY + 45
     );
 
-    ctx.textAlign = 'left';
+    ctx.textAlign = "left";
   }
 }
 
-// ===== 游戏主循环 =====
+/* ===== 游戏主循环 ===== */
 
 function loop(now) {
-  updateLayout();
-
   const dt = Math.min(
     0.045,
     (now - lastTime) / 1000 || 0
@@ -1235,11 +1335,8 @@ function loop(now) {
 
   lastTime = now;
 
-  if (
-    mode === 'camera' &&
-    !paused &&
-    !finished
-  ) {
+  // 摄像头持续更新，但暂停时不执行游戏操作
+  if (mode === "camera" && !paused) {
     detectHands(now);
   }
 
@@ -1251,61 +1348,67 @@ function loop(now) {
     updateSoupMovement(dt);
 
     if (spawnTimer <= 0) {
-      spawn();
+      spawnFood();
 
-      spawnTimer =
-        Math.max(
-          0.47,
-          2.1 - elapsed * 0.025
-        ) * rand(0.75, 1.2);
+      spawnTimer = Math.max(
+        0.47,
+        2.1 - elapsed * 0.025
+      ) * rand(0.75, 1.2);
     }
 
     for (const item of [...items]) {
-      if (!playing) break;
-
-      item.age += dt;
-
+      if (finished) break;
       if (item.held !== null) continue;
 
       item.vy += 125 * dt;
       item.x += item.vx * dt;
       item.y += item.vy * dt;
-      item.rot += item.spin * dt;
 
-      if (
-        item.thrown &&
-        Math.abs(item.vx) > 170
-      ) {
+      item.rotation += item.spin * dt;
+
+      // 未被玩家甩出的食物只做普通漂移
+      if (!item.thrown) {
         if (
-          item.x < layout.width * 0.12 ||
-          item.x > layout.width * 0.88
+          item.x < 60 ||
+          item.x > layout.width - 60
         ) {
-          resolveItem(item, item.bad);
-          continue;
+          item.vx *= -1;
+          item.x = clamp(
+            item.x,
+            60,
+            layout.width - 60
+          );
         }
-      } else if (
-        item.x < 60 ||
-        item.x > layout.width - 60
-      ) {
-        item.vx *= -1;
       }
 
+      if (classify(item)) continue;
+
+      // 被甩出画面但尚未触发边缘判定
       if (
-        item.y > layout.dropY &&
-        classify(item)
+        item.thrown &&
+        (
+          item.x < -item.size ||
+          item.x > layout.width + item.size
+        )
       ) {
+        finishItem(
+          item,
+          item.bad,
+          item.bad
+            ? "✓ 变质食物成功丢弃 +150"
+            : "✗ 新鲜食物被扔掉了！",
+          150
+        );
+
         continue;
       }
 
-      if (
-        item.y > layout.height + item.size
-      ) {
-        removeItem(item);
+      // 掉出底部，扣生命
+      if (item.y > layout.height + item.size) {
+        items = items.filter(i => i !== item);
 
         lives--;
-        flash('食材掉落，失去一条命');
-
-        updateHud();
+        flash("食材掉落，失去一条命");
 
         if (lives <= 0) {
           endGame();
@@ -1313,12 +1416,22 @@ function loop(now) {
       }
     }
 
-    if (remaining <= 0) {
-      endGame();
-    }
+    if (!finished && remaining <= 0) {
+  remaining = 0;
+  playing = false;
+  finished = true;
+
+  el("modalTitle").textContent = "时间到！";
+  el("modalText").textContent =
+    "最终得分：" + score.toLocaleString();
+
+  el("modal").classList.remove("hidden");
+}
 
     updateHud();
+  }
 
+  if (playing && !paused) {
     for (const p of particles) {
       p.x += p.vx * dt;
       p.y += p.vy * dt;
@@ -1336,44 +1449,89 @@ function loop(now) {
   requestAnimationFrame(loop);
 }
 
-requestAnimationFrame(loop);
+/* ===== 按钮事件 ===== */
 
-// ===== 按钮事件 =====
+el("startCamera").addEventListener(
+  "click",
+  () => startGame("camera")
+);
 
-el('startCamera').onclick = () => start('camera');
+el("startMouse").addEventListener(
+  "click",
+  () => startGame("mouse")
+);
 
-el('startMouse').onclick = () => start('mouse');
+el("cameraBtn").addEventListener(
+  "click",
+  async () => {
+    if (!playing) {
+      startGame("camera");
+    } else {
+      const ok = await enableCamera();
 
-el('cameraBtn').onclick = async () => {
-  if (!playing) {
-    await start('camera');
-  } else if (!paused) {
-    await enableCamera();
-  }
-};
-
-el('mouseBtn').onclick = () => {
-  if (!playing) {
-    start('mouse');
-  } else {
-    for (const [id] of handTracks) {
-      release(id, 0, 0, false);
+      if (ok) {
+        mode = "camera";
+      }
     }
-
-    mode = 'mouse';
-
-    status('鼠标 / 触屏模式已开启');
   }
-};
+);
 
-el('restartBtn').onclick = () => start(mode);
+el("mouseBtn").addEventListener(
+  "click",
+  () => {
+    if (!playing) {
+      startGame("mouse");
+    } else {
+      // 切换模式时释放正在抓取的食物
+      for (const item of items) {
+        if (item.held !== null) {
+          item.held = null;
+          item.vx = 0;
+          item.vy = Math.max(80, item.vy);
+        }
+      }
 
-el('resultRestartBtn').onclick = () => start(mode);
+      handTracks.clear();
+      pointers.clear();
+      mode = "mouse";
 
-el('pauseBtn').onclick = togglePause;
+      el("message").textContent =
+        "鼠标 / 触屏模式已开启";
+    }
+  }
+);
 
-el('resumeBtn').onclick = togglePause;
+el("pauseBtn").addEventListener(
+  "click",
+  togglePause
+);
 
-window.addEventListener('beforeunload', () => {
-  stream?.getTracks().forEach(t => t.stop());
+el("resumeBtn").addEventListener(
+  "click",
+  togglePause
+);
+
+el("restartBtn").addEventListener(
+  "click",
+  () => startGame(mode)
+);
+
+el("resultRestartBtn").addEventListener(
+  "click",
+  () => startGame(mode)
+);
+
+/* ===== 页面关闭时停止摄像头 ===== */
+
+window.addEventListener("beforeunload", () => {
+  if (stream) {
+    stream.getTracks().forEach(
+      track => track.stop()
+    );
+  }
 });
+
+/* ===== 启动渲染 ===== */
+
+updateHud();
+requestAnimationFrame(loop);

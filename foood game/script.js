@@ -1029,6 +1029,8 @@ if (fist) {
   );
 }
 
+      }
+
       track.closed = fist;
       handTracks.set(id, track);
 

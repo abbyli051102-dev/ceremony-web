@@ -164,8 +164,19 @@ let soupOffsetX = 0;
 // 汤锅移动方向：1 向右，-1 向左
 let soupDirection = 1;
 
-// 初始速度：慢
-const soupStartSpeed = 55;
+/* ===== 汤锅分阶段加速 ===== */
+
+// 初始速度
+const soupStartSpeed = 65;
+
+// 20秒后速度
+const soupSpeed20 = 160;
+
+// 40秒后速度
+const soupSpeed40 = 280;
+
+// 当前速度
+let soupSpeed = soupStartSpeed;
 
 // 最大速度：快
 const soupMaxSpeed = 350;
@@ -187,28 +198,39 @@ function updateSoupMovement(dt) {
 
   const range = getSoupMoveRange();
 
-  // 随着游戏时间增加，汤锅逐渐加速
-  soupSpeed = Math.min(
-    soupMaxSpeed,
-    soupStartSpeed + elapsed * soupAcceleration
-  );
+  // 根据已经进行的游戏时间切换速度
+  if (elapsed < 20) {
 
-  // 根据当前速度左右移动
+    // 第0～20秒：慢速
+    soupSpeed = soupStartSpeed;
+
+  } else if (elapsed < 40) {
+
+    // 第20～40秒：中速
+    soupSpeed = soupSpeed20;
+
+  } else {
+
+    // 第40～60秒：快速
+    soupSpeed = soupSpeed40;
+
+  }
+
+  // 汤锅左右移动
   soupOffsetX += soupDirection * soupSpeed * dt;
 
-  // 到达右边界后向左移动
+  // 到达右边界，改变方向
   if (soupOffsetX >= range) {
     soupOffsetX = range;
     soupDirection = -1;
   }
 
-  // 到达左边界后向右移动
+  // 到达左边界，改变方向
   if (soupOffsetX <= -range) {
     soupOffsetX = -range;
     soupDirection = 1;
   }
 }
-
 // 获取汤锅当前的位置
 function getSoupPosition() {
   return {
@@ -487,8 +509,10 @@ function release(id, vx = 0, vy = 0) {
     item.held = null;
 
     // 释放后保留手部移动方向和速度
-    item.vx = clamp(vx, -1300, 1300);
-    item.vy = clamp(vy, -950, 950);
+    // 松手后取消水平惯性和向上回弹
+    // 食材恢复自然下落
+    item.vx = 0;
+    item.vy = Math.max(0, item.vy);
 
     // 立即检查是否进入汤锅或扔出屏幕
     classify(item);
@@ -790,40 +814,64 @@ function getHandColor(label) {
     : HAND_SETTINGS.rightColor;
 }
 
-function isFist(points, wasFist = false) {
+function getHandGesture(points) {
   const tips = [8, 12, 16, 20];
   const pips = [6, 10, 14, 18];
-  const wrist = points[0];
+  const mcps = [5, 9, 13, 17];
 
   let folded = 0;
-
-  // 已经抓住时，稍微放宽阈值，
-  // 防止移动过程中误判为松手
-  const threshold = wasFist
-    ? 1.35
-    : HAND_SETTINGS.fistThreshold;
+  let extended = 0;
 
   for (let i = 0; i < 4; i++) {
     const tip = points[tips[i]];
     const pip = points[pips[i]];
+    const mcp = points[mcps[i]];
+    const wrist = points[0];
 
-    const tipDistance = Math.hypot(
+    const tipToWrist = Math.hypot(
       tip.x - wrist.x,
       tip.y - wrist.y
     );
 
-    const pipDistance = Math.hypot(
+    const pipToWrist = Math.hypot(
       pip.x - wrist.x,
       pip.y - wrist.y
     );
 
-    if (tipDistance < pipDistance * threshold) {
+    const tipToMcp = Math.hypot(
+      tip.x - mcp.x,
+      tip.y - mcp.y
+    );
+
+    const pipToMcp = Math.hypot(
+      pip.x - mcp.x,
+      pip.y - mcp.y
+    );
+
+    if (
+      tipToWrist < pipToWrist * 1.16 ||
+      tipToMcp < pipToMcp * 1.18
+    ) {
       folded++;
+    }
+
+    if (
+      tipToWrist > pipToWrist * 1.32 &&
+      tipToMcp > pipToMcp * 1.35
+    ) {
+      extended++;
     }
   }
 
-  // 3根手指弯曲即可判定握拳
-  return folded >= 3;
+  return {
+    fist: folded >= 3,
+    open: extended >= 3
+  };
+}
+
+// 保留旧函数名，避免其他代码调用时报错
+function isFist(points) {
+  return getHandGesture(points).fist;
 }
 
 function detectHands(now) {
@@ -884,10 +932,14 @@ function detectHands(now) {
 
       // 采用前一帧的握拳状态，
       // 避免抓取时频繁松开
-      const fist = isFist(
-        points,
-        track.closed
-      );
+      const gesture = getHandGesture(points);
+
+// 明确张掌时，优先释放
+const fist = gesture.open
+  ? false
+  : gesture.fist
+    ? true
+    : track.closed;
 
       const dt = Math.max(
         0.016,
@@ -908,22 +960,20 @@ function detectHands(now) {
       );
 
       // 提高跟随速度：原来0.65，现在0.90
-      const speed = HAND_SETTINGS.followSpeed;
-
-      track.x =
-        track.x * (1 - speed) + x * speed;
-
-      track.y =
-        track.y * (1 - speed) + y * speed;
+      // 直接跟随手掌，不做平滑和回弹
+      track.x = x;
+      track.y = y;
 
       track.t = now;
 
       if (playing && mode === "camera") {
 
         // 张手变握拳：立即抓取
-        if (fist && !track.closed) {
-          grab(id, track.x, track.y);
-        }
+        // 握拳期间，只要没有抓到食物，
+// 每一帧都可以继续尝试抓取
+if (fist) {
+  grab(id, track.x, track.y);
+}
 
         // 持续握拳：食材紧跟手部
         if (fist) {
@@ -996,11 +1046,7 @@ function detectHands(now) {
     // 手部离开画面时释放食物
     for (const [id, track] of handTracks) {
       if (!active.has(id)) {
-        release(
-          id,
-          track.vx,
-          track.vy
-        );
+        release(id, 0, 0);
 
         handTracks.delete(id);
       }

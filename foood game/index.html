@@ -1,104 +1,55 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport"
-        content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#f9f1d7">
-  <title>SECOND CHANCE BITES</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>Second Chance Bites · 食物的第二次机会</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <main id="game">
-    <canvas id="canvas"></canvas>
-
-    <video
-      id="video"
-      autoplay
-      muted
-      playsinline
-      webkit-playsinline
-    ></video>
-
-    <canvas
-      id="handPreview"
-      width="320"
-      height="240"
-    ></canvas>
-
-    <div id="hud">
-      <div class="pill">
-        <small>spoiled</small>
-        <strong id="spoiled">0</strong>
-      </div>
-
-      <div class="pill">
-        <small>time</small>
-        <strong id="time">60</strong>
-      </div>
-
-      <div class="pill score">
-        <small>score</small>
-        <strong id="score">0</strong>
-      </div>
+<main id="game">
+  <canvas id="canvas" aria-label="食物分类游戏"></canvas>
+  <video id="video" autoplay muted playsinline webkit-playsinline></video>
+  <div id="hud">
+    <div class="pill"><small>spoiled</small><strong id="spoiled">0</strong></div>
+    <div class="pill"><small>time</small><strong id="time">60</strong></div>
+    <div class="pill score"><small>score</small><strong id="score">0</strong></div>
+  </div>
+  <div id="lives">♥ ♥ ♥</div>
+  <div id="bottom">
+    <div id="message">握拳抓取，张掌释放；坏食材向左右甩出，好食材落入移动的汤锅</div>
+    <div class="buttons">
+      <button id="cameraBtn" type="button">📷 开启摄像头</button>
+      <button id="mouseBtn" type="button">🖱 鼠标体验</button>
+      <button id="pauseBtn" type="button">⏸ 暂停</button>
+      <button id="restartBtn" type="button">↻ 重玩</button>
     </div>
-
-    <div id="lives">♥ ♥ ♥</div>
-
-    <div id="bottom">
-      <div id="message" role="status">
-        点击摄像头按钮，握拳抓取，张掌释放
+  </div>
+  <div id="modal">
+    <div class="modalCard">
+      <div class="eyebrow">SECOND CHANCE BITES</div>
+      <h1 id="modalTitle">食物的第二次机会</h1>
+      <p id="modalText">新鲜食材放入左右移动的汤锅，变质食材握拳抓取后向左右甩出。汤锅每20秒加速，只有三条命！</p>
+      <div class="modalButtons">
+        <button id="startCamera" type="button">📷 摄像头手势开始</button>
+        <button id="startMouse" type="button">🖱 鼠标 / 触屏试玩</button>
       </div>
-
-      <div class="buttons">
-        <button id="cameraBtn" type="button">
-          📷 测试摄像头
-        </button>
-
-        <button id="mouseBtn" type="button">
-          🖱 鼠标体验
-        </button>
-
-        <button id="restartBtn" type="button">
-          ↻ 重玩
-        </button>
-      </div>
+      <p class="footnote">摄像头需 HTTPS 或 localhost · 首次识别需联网加载 MediaPipe</p>
     </div>
-
-    <div id="modal">
-      <div class="modalCard">
-        <div class="eyebrow">
-          SECOND CHANCE BITES
-        </div>
-
-        <h1 id="modalTitle">
-          食物的第二次机会
-        </h1>
-
-        <p id="modalText">
-          接住新鲜食材，让它掉入左右移动的汤锅；
-          抓住变质食材，将它扔向屏幕左右两侧。
-          握拳抓取，张掌释放，只有三条命！
-        </p>
-
-        <div class="modalButtons">
-          <button id="startCamera" type="button">
-            📷 摄像头手势开始
-          </button>
-
-          <button id="startMouse" type="button">
-            🖱 鼠标 / 触屏试玩
-          </button>
-        </div>
-
-        <p class="footnote">
-          摄像头需要 localhost 或 HTTPS，
-          首次加载模型需要联网
-        </p>
-      </div>
+  </div>
+  <div id="pauseOverlay" class="hidden"><div class="modalCard"><div class="eyebrow">SECOND CHANCE BITES</div><h1>游戏已暂停</h1><p>倒计时、汤锅和食材均已暂停</p><button id="resumeBtn" type="button">▶ 继续游戏</button></div></div>
+  <div id="foodResult" class="hidden" role="dialog" aria-modal="true" aria-label="游戏结算">
+    <div class="resultCard">
+      <div class="eyebrow">SECOND CHANCE BITES</div>
+      <h2>你今天只能吃到…</h2>
+      <div class="resultImage"><img id="resultFoodImage" src="" alt="今日美食"></div>
+      <h3 id="resultFoodName"></h3>
+      <p>最终积分：<strong id="resultFinalScore">0</strong></p>
+      <p id="resultFoodMessage"></p>
+      <button id="resultRestartBtn" type="button">↻ 再玩一次</button>
     </div>
-  </main>
-
-  <script src="script.js" defer></script>
+  </div>
+</main>
+<script src="script.js" defer></script>
 </body>
 </html>

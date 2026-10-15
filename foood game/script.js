@@ -390,11 +390,18 @@ function classify(item) {
     y >= soupTop;
 
   // 食物是否被扔出左右边界
-  const outLeft = x < -item.size * 0.35;
-  const outRight =
-    x > layout.width + item.size * 0.35;
+  // 左右各设置一块隐形丢弃区域
+// 到达边缘附近即可完成分类
+const sideZone = layout.width * 0.12;
 
-  const thrownAway = outLeft || outRight;
+const outLeft = x < sideZone;
+
+const outRight =
+  x > layout.width - sideZone;
+
+  const thrownAway =
+  (outLeft || outRight) &&
+  item.y > layout.height * 0.15;
 
   // 不在任何分类区域，不处理
   if (!inSoup && !thrownAway) {
@@ -494,18 +501,22 @@ item.y = clamp(
 }
 
 function release(id, vx = 0, vy = 0) {
+
   for (const item of [...items]) {
+
     if (item.held !== id) continue;
 
     item.held = null;
 
-    // 释放后保留手部移动方向和速度
-    // 松手后取消水平惯性和向上回弹
-    // 食材恢复自然下落
-    item.vx = 0;
-    item.vy = Math.max(0, item.vy);
+    // 保留水平甩出速度
+    // 向左甩为负数，向右甩为正数
+    item.vx = clamp(vx * 1.4, -1600, 1600);
 
-    // 立即检查是否进入汤锅或扔出屏幕
+    // 不产生向上回弹
+    // 只允许自然下落或向下运动
+    item.vy = Math.max(80, vy);
+
+    // 释放时立即判断分类
     classify(item);
   }
 }
@@ -806,58 +817,77 @@ function getHandColor(label) {
 }
 
 function getHandGesture(points) {
-  const tips = [8, 12, 16, 20];
-  const pips = [6, 10, 14, 18];
-  const mcps = [5, 9, 13, 17];
+
+  // 计算三个关节点之间的夹角
+  function angle(a, b, c) {
+    const abx = a.x - b.x;
+    const aby = a.y - b.y;
+    const abz = (a.z || 0) - (b.z || 0);
+
+    const cbx = c.x - b.x;
+    const cby = c.y - b.y;
+    const cbz = (c.z || 0) - (b.z || 0);
+
+    const dot =
+      abx * cbx + aby * cby + abz * cbz;
+
+    const lengthAB = Math.hypot(abx, aby, abz);
+    const lengthCB = Math.hypot(cbx, cby, cbz);
+
+    const cosine = Math.max(
+      -1,
+      Math.min(
+        1,
+        dot / Math.max(
+          0.000001,
+          lengthAB * lengthCB
+        )
+      )
+    );
+
+    return Math.acos(cosine) * 180 / Math.PI;
+  }
+
+  // 食指、中指、无名指、小指
+  const fingers = [
+    [5, 6, 8],
+    [9, 10, 12],
+    [13, 14, 16],
+    [17, 18, 20]
+  ];
 
   let folded = 0;
   let extended = 0;
 
-  for (let i = 0; i < 4; i++) {
-    const tip = points[tips[i]];
-    const pip = points[pips[i]];
-    const mcp = points[mcps[i]];
-    const wrist = points[0];
-
-    const tipToWrist = Math.hypot(
-      tip.x - wrist.x,
-      tip.y - wrist.y
+  for (const [mcp, pip, tip] of fingers) {
+    const bend = angle(
+      points[mcp],
+      points[pip],
+      points[tip]
     );
 
-    const pipToWrist = Math.hypot(
-      pip.x - wrist.x,
-      pip.y - wrist.y
-    );
-
-    const tipToMcp = Math.hypot(
-      tip.x - mcp.x,
-      tip.y - mcp.y
-    );
-
-    const pipToMcp = Math.hypot(
-      pip.x - mcp.x,
-      pip.y - mcp.y
-    );
-
-    if (
-      tipToWrist < pipToWrist * 1.16 ||
-      tipToMcp < pipToMcp * 1.18
-    ) {
+    // 角度越小，手指越弯曲
+    if (bend < 115) {
       folded++;
     }
 
-    if (
-      tipToWrist > pipToWrist * 1.32 &&
-      tipToMcp > pipToMcp * 1.35
-    ) {
+    // 角度越接近180，手指越伸直
+    if (bend > 150) {
       extended++;
     }
   }
 
   return {
+    // 至少3根手指弯曲，认为握拳
     fist: folded >= 3,
+
+    // 至少3根手指伸直，认为张掌
     open: extended >= 3
   };
+}
+
+function isFist(points) {
+  return getHandGesture(points).fist;
 }
 
 // 保留旧函数名，避免其他代码调用时报错
@@ -938,11 +968,26 @@ const fist = gesture.open
       );
 
       // 保留甩手速度，用于丢弃变质食材
-      track.vx = clamp(
-        (x - track.x) / dt,
-        -1300,
-        1300
-      );
+      const instantVx = clamp(
+  (x - track.x) / dt,
+  -1300,
+  1300
+);
+
+const instantVy = clamp(
+  (y - track.y) / dt,
+  -1300,
+  1300
+);
+
+// 保留部分上一帧速度，减少抖动
+track.vx =
+  track.vx * 0.35 +
+  instantVx * 0.65;
+
+track.vy =
+  track.vy * 0.35 +
+  instantVy * 0.65;
 
       track.vy = clamp(
         (y - track.y) / dt,
@@ -966,24 +1011,23 @@ if (fist) {
   grab(id, track.x, track.y);
 }
 
-        // 持续握拳：食材紧跟手部
+        // 持续握拳：跟随手掌
         if (fist) {
-          moveHeld(
-            id,
-            track.x,
-            track.y
-          );
-        }
+        moveHeld(
+        id,
+        track.x,
+        track.y
+  );
+}
 
-        // 握拳变张手：立即释放
-        if (!fist && track.closed) {
-          release(
-            id,
-            track.vx,
-            track.vy
-          );
-        }
-      }
+       // 张开手：立即释放，保留甩手速度
+       if (!fist && track.closed) {
+       release(
+        id,
+         track.vx,
+         track.vy
+  );
+}
 
       track.closed = fist;
       handTracks.set(id, track);
@@ -1037,7 +1081,7 @@ if (fist) {
     // 手部离开画面时释放食物
     for (const [id, track] of handTracks) {
       if (!active.has(id)) {
-        release(id, 0, 0);
+        release(id, track.vx, track.vy);
 
         handTracks.delete(id);
       }

@@ -178,15 +178,6 @@ const soupSpeed40 = 280;
 // 当前速度
 let soupSpeed = soupStartSpeed;
 
-// 最大速度：快
-const soupMaxSpeed = 350;
-
-// 每经过1秒增加的速度
-const soupAcceleration = 5;
-
-// 当前汤锅速度
-let soupSpeed = soupStartSpeed;
-
 // 汤锅移动范围
 // 电脑横屏范围较大，手机竖屏范围较小
 function getSoupMoveRange() {

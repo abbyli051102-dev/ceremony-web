@@ -4,36 +4,36 @@
 ========================================= */
 
 const ASSETS = {
-  bg: "assets/bg.jpg",
-  soup: "assets/soup.png",
+  bg: "assets/bg.webp",
+  soup: "assets/soup.webp",
 
-  pepper: "assets/pepper.png",
-  eggplant: "assets/eggplant.png",
-  beef: "assets/beef.png",
-  avocado: "assets/avocado.png",
-  mushroom: "assets/mushroom.png",
-  chicken: "assets/chicken.png",
-  potato: "assets/potato.png",
-  greens: "assets/greens.png",
-  cabbage: "assets/cabbage.png",
-  corn: "assets/corn.png",
-  tomato: "assets/tomato.png",
-  cauliflower: "assets/cauliflower.png"
+  pepper: "assets/pepper.webp",
+  eggplant: "assets/eggplant.webp",
+  beef: "assets/beef.webp",
+  avocado: "assets/avocado.webp",
+  mushroom: "assets/mushroom.webp",
+  chicken: "assets/chicken.webp",
+  potato: "assets/potato.webp",
+  greens: "assets/greens.webp",
+  cabbage: "assets/cabbage.webp",
+  corn: "assets/corn.webp",
+  tomato: "assets/tomato.webp",
+  cauliflower: "assets/cauliflower.webp"
 };
 
 const FOOD_REWARDS = [
-  { name: "蔊菜皮蛋", image: "assets/dish1.png" },
-  { name: "彩椒炒肉", image: "assets/dish2.png" },
-  { name: "牛油果减脂餐", image: "assets/dish4.png" },
-  { name: "肉末茄子", image: "assets/dish5.png" },
-  { name: "番茄炒蛋", image: "assets/dish6.png" },
-  { name: "花菜炒肉", image: "assets/dish7.png" },
-  { name: "小鸡炖蘑菇", image: "assets/dish8.png" }
+  { name: "蔊菜皮蛋", image: "assets/dish1.webp" },
+  { name: "彩椒炒肉", image: "assets/dish2.webp" },
+  { name: "牛油果减脂餐", image: "assets/dish4.webp" },
+  { name: "肉沫茄子", image: "assets/dish5.webp" },
+  { name: "番茄炒蛋", image: "assets/dish6.webp" },
+  { name: "花菜炒肉", image: "assets/dish7.webp" },
+  { name: "小鸡炖蘑菇", image: "assets/dish8.webp" }
 ];
 
 const DARK_FOOD = {
   name: "黑暗料理",
-  image: "assets/dish3.png"
+  image: "assets/dish3.webp"
 };
 
 const DESKTOP = {
@@ -145,10 +145,27 @@ const handTracks = new Map();
 let soupOffsetX = 0;
 let soupDirection = 1;
 
-const soupStartSpeed = 65;
-const soupSpeed20 = 160;
-const soupSpeed40 = 280;
+/* ===== 汤锅每10秒快速加速 ===== */
 
+// 0～10秒
+const soupStartSpeed = 65;
+
+// 10～20秒
+const soupSpeed10 = 130;
+
+// 20～30秒
+const soupSpeed20 = 210;
+
+// 30～40秒
+const soupSpeed30 = 300;
+
+// 40～50秒
+const soupSpeed40 = 410;
+
+// 50～60秒
+const soupSpeed50 = 540;
+
+// 当前汤锅速度
 let soupSpeed = soupStartSpeed;
 
 function getSoupMoveRange() {
@@ -165,23 +182,39 @@ function getSoupPosition() {
 }
 
 function updateSoupMovement(dt) {
+
   const range = getSoupMoveRange();
 
-  if (elapsed < 20) {
+  // 每经过10秒，汤锅立即提高一个速度档位
+  if (elapsed < 10) {
     soupSpeed = soupStartSpeed;
-  } else if (elapsed < 40) {
+
+  } else if (elapsed < 20) {
+    soupSpeed = soupSpeed10;
+
+  } else if (elapsed < 30) {
     soupSpeed = soupSpeed20;
-  } else {
+
+  } else if (elapsed < 40) {
+    soupSpeed = soupSpeed30;
+
+  } else if (elapsed < 50) {
     soupSpeed = soupSpeed40;
+
+  } else {
+    soupSpeed = soupSpeed50;
   }
 
+  // 汤锅左右移动
   soupOffsetX += soupDirection * soupSpeed * dt;
 
+  // 碰到右边界后向左
   if (soupOffsetX >= range) {
     soupOffsetX = range;
     soupDirection = -1;
   }
 
+  // 碰到左边界后向右
   if (soupOffsetX <= -range) {
     soupOffsetX = -range;
     soupDirection = 1;

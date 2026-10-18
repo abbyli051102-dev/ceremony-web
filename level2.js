@@ -13,8 +13,9 @@ window.levelTwo = (() => {
     stageTime:0, poseModel:null, poseLoading:null, lastVideo:-1, lastPoseError:0, lastIntent:0,
     rankingSaved:false, keyboard:0, lucky:null, runId:0};
   const camp = new Image(); camp.src = 'assets/camp.webp';
-  const rewardImgs = [1,2,4,5,6,7,8].map(i => 'assets/dish'+i+'.webp');
-  const mealNames = {1:'蔊菜皮蛋',2:'彩椒炒肉',4:'牛油果减脂餐',5:'肉末茄子',6:'番茄炒蛋',7:'花菜炒肉',8:'小鸡炖蘑菇'};
+  const rewardIds = [1,2,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18];
+  const rewardImgs = rewardIds.map(i => 'assets/dish'+i+'.webp');
+  const mealNames = {1:'蔊菜皮蛋',2:'彩椒炒肉',4:'牛油果减脂餐',5:'肉末茄子',6:'番茄炒蛋',7:'花菜炒肉',8:'小鸡炖蘑菇',9:'蔊菜皮蛋·彩椒炒肉',10:'牛油果·番茄炒蛋',11:'肉末茄子·花菜炒肉',12:'小鸡炖蘑菇·彩椒炒肉',13:'蔊菜皮蛋·番茄炒蛋',14:'牛油果·小鸡炖蘑菇',15:'肉末茄子·彩椒炒肉',16:'花菜炒肉·番茄炒蛋',17:'蔊菜皮蛋·小鸡炖蘑菇',18:'牛油果·肉末茄子'};
   const bomb = {symbol:'💣'};
   const heart = {symbol:'💗'};
 
@@ -31,37 +32,158 @@ window.levelTwo = (() => {
     $('modalTitle').textContent='食物的第二次机会';
     $('modalText').textContent='新鲜食材放进汤锅，变质食材向两侧丢弃。累计1000分解锁湖畔露营！';
     $('cardWheel').replaceChildren();
+    $('cardWheel').classList.remove('is-revealing');
+    $('cardWheel').style.transform='translate3d(0,0,0)';
+    $('drawMachine').classList.remove('drawFinished','fan-mode','circle-mode');
+    $('drawStatus').textContent='✦ 幸运卡牌正在洗牌中…';
   }
 
   function winLevelOne() {
     if (game.stage !== 1 || finished) return;
-    game.stage=1.5;
-    playing=false; paused=false;
-    pointers.clear(); handTracks.clear();
-    for (const item of items) item.held=null;
-    $('stageBadge').textContent='LEVEL 1 COMPLETE · 幸运抽卡';
+    game.stage = 1.5;
+    playing = false;
+    paused = false;
+    pointers.clear();
+    handTracks.clear();
+    for (const item of items) item.held = null;
+
+    $('stageBadge').textContent = 'LEVEL 1 COMPLETE · 幸运洗牌抽奖';
     $('levelTransition').classList.remove('hidden');
-    $('enterLevel2').disabled=true;
+    $('enterLevel2').disabled = true;
     $('luckyReveal').classList.add('hidden');
-    const wheel=$('cardWheel'); wheel.replaceChildren();
-    for (let i=0;i<7;i++) {
-      const card=document.createElement('div'); card.className='spinCard';
-      card.style.setProperty('--delay',(-i*.15)+'s');
-      const img=document.createElement('img'); img.src=rewardImgs[i]; img.alt='幸运菜品';
-      card.appendChild(img); wheel.appendChild(card);
+    $('drawMachine').classList.remove('drawFinished');
+    $('drawStatus').textContent = '✦ 17张幸运菜品卡片正在随机洗牌…';
+
+    const wheel = $('cardWheel');
+    wheel.replaceChildren();
+    wheel.style.transform = 'translate3d(0,0,0)';
+    wheel.classList.remove('is-revealing');
+    const machine = $('drawMachine');
+    const thisRun = game.runId;
+    const alive = () => game.stage === 1.5 && game.runId === thisRun;
+
+    // 洗牌使用真正的 Fisher-Yates 随机排列。
+    const shuffled = [...rewardIds];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
     }
-    const thisRun=game.runId;
-    setTimeout(() => {
-      if (game.stage!==1.5 || game.runId!==thisRun) return;
-      const n=pick([1,2,4,5,6,7,8]);
-      game.lucky=n;
-      wheel.classList.add('hidden');
-      $('luckyImage').src='assets/dish'+n+'.webp';
-      $('luckyName').textContent=mealNames[n];
+    const winner = pick(rewardIds);
+    game.lucky = winner;
+
+    function makeCard(n, index) {
+      const card = document.createElement('div');
+      card.className = 'spinCard';
+      const shine = document.createElement('div');
+      shine.className = 'spinCardShine';
+      shine.textContent = '✦';
+      const number = document.createElement('div');
+      number.className = 'spinCardNumber';
+      number.textContent = 'NO. ' + String(rewardIds.indexOf(n) + 1).padStart(2, '0');
+      const img = document.createElement('img');
+      img.src = 'assets/dish' + n + '.webp';
+      img.alt = mealNames[n];
+      img.loading = 'eager';
+      const label = document.createElement('div');
+      label.className = 'spinCardName';
+      label.textContent = mealNames[n];
+      card.append(shine, number, img, label);
+      return card;
+    }
+
+    // 圆形转圈抽卡：17张卡片真实环绕旋转，快速洗牌后减速，中奖卡飞到中心。
+    // 所有变换都由逐帧脚本驱动，避免旧版 CSS !important 把动画覆盖掉。
+    machine.classList.remove('fan-mode','is-shuffling','drawFinished');
+    machine.classList.add('circle-mode');
+    wheel.replaceChildren();
+    wheel.style.transform = 'none';
+    const cards = shuffled.map(n => {
+      const card = makeCard(n);
+      card.classList.add('orbit-card');
+      card.dataset.dish = String(n);
+      wheel.appendChild(card);
+      return card;
+    });
+    const N = cards.length;
+    const tau = Math.PI * 2;
+    const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+    const easeOut = t => 1 - Math.pow(1 - t, 4);
+    let phase = -Math.PI/2;
+    let spinning = true;
+    const winnerIndex = cards.findIndex(card => Number(card.dataset.dish) === winner);
+    const orbitSize = () => {
+      const rect = machine.getBoundingClientRect();
+      return {
+        rx: Math.min(rect.width * .39, 370),
+        ry: Math.min(rect.height * .30, 145)
+      };
+    };
+    function layoutOrbit(angle, emphasized = false) {
+      const {rx,ry} = orbitSize();
+      cards.forEach((card,i) => {
+        const a = angle + i*tau/N;
+        const depth = (Math.sin(a)+1)/2;
+        const x = Math.cos(a)*rx;
+        const y = Math.sin(a)*ry;
+        const scale = .64 + depth*.28;
+        card.style.setProperty('transform',
+          `translate(-50%,-50%) translate3d(${x}px,${y}px,0) rotate(${Math.cos(a)*9}deg) scale(${scale})`,
+          'important');
+        card.style.zIndex = String(Math.round(depth*100)+1);
+        card.style.opacity = emphasized && i!==winnerIndex ? '.28' : '1';
+        card.style.filter = emphasized && i!==winnerIndex ? 'grayscale(.5) blur(2px)' : 'none';
+      });
+    }
+    layoutOrbit(phase);
+    // 先快速转圈洗牌，再减速到中奖卡位于圆环最前方（下侧）。
+    const start = performance.now();
+    const spinDuration = 4900;
+    const finalAngle = Math.PI/2 - winnerIndex*tau/N + 8*tau;
+    const initialAngle = phase;
+    const totalDelta = finalAngle - initialAngle;
+    function animateSpin(now) {
+      if (!alive() || !spinning) return;
+      const t = Math.min(1,(now-start)/spinDuration);
+      // 前60%保持高速，后40%缓慢刹车
+      const progress = t < .60 ? (t/.60)*.79 : .79 + .21*easeOut((t-.60)/.40);
+      phase = initialAngle + totalDelta*progress;
+      layoutOrbit(phase);
+      if (t < .35) $('drawStatus').textContent = '✦ 17张美食卡片正在高速旋转洗牌…';
+      else if (t < .73) $('drawStatus').textContent = '✦ 幸运转盘持续旋转，正在随机抽取…';
+      else $('drawStatus').textContent = '✦ 正在减速，即将揭晓幸运菜品…';
+      if (t < 1) requestAnimationFrame(animateSpin);
+      else {
+        spinning = false;
+        finishSpin();
+      }
+    }
+    async function finishSpin() {
+      if (!alive()) return;
+      layoutOrbit(finalAngle,true);
+      await sleep(250);
+      if (!alive()) return;
+      $('drawStatus').textContent = '✦ 抽中了！幸运卡片正在飞向中央…';
+      const selected = cards[winnerIndex];
+      selected.classList.add('orbit-winner');
+      selected.style.zIndex = '999';
+      selected.style.opacity = '1';
+      selected.style.filter = 'none';
+      const from = selected.style.transform;
+      const to = 'translate(-50%,-50%) translate3d(0px,0px,0) rotate(0deg) scale(1.26)';
+      // 不依赖外部动画库；明确覆盖旧样式。
+      const anim = selected.animate([{transform:from},{transform:to}],
+        {duration:950,easing:'cubic-bezier(.18,.85,.18,1)',fill:'forwards'});
+      await anim.finished.catch(()=>{});
+      if (!alive()) return;
+      selected.style.setProperty('transform',to,'important');
+      $('drawStatus').textContent='✦ 幸运菜品揭晓！';
+      $('luckyImage').src='assets/dish'+winner+'.webp';
+      $('luckyName').textContent=mealNames[winner];
       $('luckyReveal').classList.remove('hidden');
       $('enterLevel2').disabled=false;
-    },2600);
-    wheel.classList.remove('hidden');
+      machine.classList.add('drawFinished');
+    }
+    requestAnimationFrame(animateSpin);
   }
 
   async function enterLevel2() {
@@ -177,7 +299,7 @@ window.levelTwo = (() => {
       game.heartAt+=nextHeart();
     }
     const soupY=layout.height*(layout===PORTRAIT?.83:.77);
-    const soupW=layout.width*(layout===PORTRAIT?.34:.29);
+    const soupW=layout.width*(layout===PORTRAIT?.49:.43);
     const soupCenter=game.x*layout.width;
     for(const d of [...game.drops]){
       d.y+=d.speed*dt;
@@ -228,7 +350,7 @@ window.levelTwo = (() => {
       g.drawImage(camp,(w-camp.width*sc)/2,(h-camp.height*sc)/2,camp.width*sc,camp.height*sc);
     } else {g.fillStyle='#d7e7c4';g.fillRect(0,0,w,h);}
     // Slight transparent catching lane at the lower edge of the scene.
-    const soupW=w*(layout===PORTRAIT?.34:.29),soupH=soupW*.52;
+    const soupW=w*(layout===PORTRAIT?.49:.43),soupH=soupW*.52;
     const cx=game.x*w,cy=h*(layout===PORTRAIT?.83:.77);
     g.fillStyle='#ffffff30';g.beginPath();g.ellipse(cx,cy+soupH*.32,soupW*.52,soupH*.21,0,0,Math.PI*2);g.fill();
     const img=images.soup;

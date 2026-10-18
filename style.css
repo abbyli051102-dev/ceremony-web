@@ -411,15 +411,133 @@ button:disabled {
 #levelTransition,#rankingOverlay{position:absolute;inset:0;z-index:900;background:#283d2bbd;backdrop-filter:blur(8px);display:grid;place-items:center;padding:14px}
 .transitionCard,.rankCard{width:min(560px,96vw);max-height:94dvh;overflow:auto;background:#fffdf0;border:3px solid #fff;border-radius:28px;box-shadow:0 20px 65px #1e34265c;padding:24px;text-align:center;color:#476348}
 .transitionCard h2,.rankCard h2{font-size:clamp(23px,3vw,34px);margin:12px 0}
-.cardWheel{height:225px;position:relative;perspective:900px;overflow:hidden;margin:16px 0}
-.spinCard{position:absolute;top:26px;left:calc(50% - 83px);width:166px;height:170px;border-radius:16px;background:#fff5d9;box-shadow:0 6px 18px #2c35283d;display:grid;place-items:center;animation:cardSpin 1.1s linear infinite;animation-delay:var(--delay);transform-origin:50% 130px}
-.spinCard img{width:95%;height:95%;object-fit:contain}
-@keyframes cardSpin{from{transform:rotateY(0deg) translateX(90px) rotateZ(-12deg)}to{transform:rotateY(360deg) translateX(90px) rotateZ(12deg)}}
-#luckyReveal img{height:180px;width:100%;object-fit:contain;animation:luckyPop .6s ease-out both}
-@keyframes luckyPop{from{transform:scale(.45) rotate(-12deg);opacity:0}to{transform:scale(1) rotate(0);opacity:1}}
 #enterLevel2:disabled{opacity:.4;cursor:wait}
 #rankingList{padding-left:0;list-style:none;max-height:40vh;overflow:auto}
 #rankingList li{display:flex;justify-content:space-between;gap:10px;background:#f2f3df;border-radius:14px;margin:8px 0;padding:12px 14px;font-size:15px}
 #rankingList li.current{background:#d9eabb;font-weight:800}
 #rankSummary{font-weight:700}
 @media(max-width:680px){#stageBadge{top:78px;left:8px;font-size:10px;padding:6px 9px}#bodyGuide{top:116px;font-size:10px;padding:7px;max-width:98%;white-space:normal}.cardWheel{height:180px}.spinCard{width:125px;height:130px;left:calc(50% - 62px)}#luckyReveal img{height:140px}}
+
+/* =====================================================
+   幸运菜品抽奖 · 完整升级版（覆盖旧卡牌样式）
+   17张真实图片横向快速轮播、逐渐减速、中奖高亮、揭晓动画
+===================================================== */
+#levelTransition{background:rgba(23,44,31,.72);backdrop-filter:blur(13px);z-index:950;overflow-y:auto}
+#levelTransition .transitionCard{width:min(800px,96vw);max-height:96dvh;overflow-y:auto;overflow-x:hidden;padding:30px 34px 26px;border:2px solid rgba(255,255,255,.95);border-radius:30px;background:radial-gradient(ellipse at 50% 0%,#fff9df 0%,#fffdf0 53%,#f1f7e8 100%);box-shadow:0 30px 90px rgba(9,33,18,.35),inset 0 0 0 5px rgba(246,221,153,.23);position:relative}
+#levelTransition .transitionCard::before,#levelTransition .transitionCard::after{content:'✦';position:absolute;color:#e8b960;font-size:36px;pointer-events:none;animation:drawTwinkle 2.4s ease-in-out infinite}
+#levelTransition .transitionCard::before{top:55px;left:23px}
+#levelTransition .transitionCard::after{top:75px;right:28px;animation-delay:.8s}
+.drawTopline{font-size:11px;letter-spacing:3px;font-weight:900;color:#84986d}
+.drawSpark{color:#dba64c;font-size:16px}
+.drawSuccess{display:inline-block;margin:13px auto 2px;padding:7px 16px;background:#e5efd9;color:#5c8150;border:1px solid #cadfb7;border-radius:99px;font-size:11px;font-weight:900;letter-spacing:2px}
+#levelTransition .transitionCard h2{font-size:clamp(23px,3.8vw,38px);line-height:1.25;margin:11px 0 7px;color:#395d3d}
+.drawIntro{font-size:13px;color:#899476;margin:7px 0 17px}
+.drawDivider{display:flex;align-items:center;justify-content:center;gap:14px;font-size:11px;letter-spacing:3px;font-weight:900;color:#b28c4d;margin:4px 0 12px}
+.drawDivider::before,.drawDivider::after{content:'';width:65px;height:1px;background:linear-gradient(90deg,transparent,#d9bb80)}
+.drawDivider::after{transform:rotate(180deg)}
+.drawDivider span{font-size:15px}
+#levelTransition .drawMachine{height:238px;width:100%;position:relative;overflow:hidden;border-radius:22px;border:2px solid #e9d7a8;background:linear-gradient(180deg,#f0e4c6 0%,#fff9e7 38%,#fff8e7 67%,#e9ebd1 100%);box-shadow:inset 0 4px 18px #927e5630,0 8px 18px #4b563217;margin:0 auto;isolation:isolate}
+#levelTransition .drawGlow{position:absolute;left:50%;top:0;bottom:0;width:200px;transform:translateX(-50%);background:linear-gradient(90deg,transparent,#ffe6a46b,transparent);z-index:1;pointer-events:none}
+#levelTransition .cardWheel{height:100%;width:max-content;display:flex;align-items:center;gap:14px;position:absolute;top:0;left:0;overflow:visible;margin:0;perspective:none;isolation:auto;opacity:1;transition:none;will-change:transform}
+#levelTransition .spinCard{position:relative;top:auto;left:auto;margin:0;flex:0 0 148px;width:148px;height:190px;transform:none!important;animation:none!important;transform-origin:center;border:2px solid #f2dca8;border-radius:17px;background:linear-gradient(150deg,#fffef4,#f8f1d9);box-shadow:0 5px 12px #5b513326,0 2px 0 #fff inset;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px;overflow:hidden;will-change:auto;transition:border-color .25s,box-shadow .25s,background .25s}
+#levelTransition .spinCard img{height:122px;width:100%;object-fit:contain;flex-shrink:0;filter:drop-shadow(0 4px 4px #635b3a25)}
+#levelTransition .spinCardNumber{position:absolute;top:9px;left:11px;font-size:10px;letter-spacing:1px;color:#b29a67;font-weight:800}
+#levelTransition .spinCardShine{position:absolute;top:7px;right:10px;color:#ddb967;font-size:14px}
+#levelTransition .spinCardName{font-size:11px;color:#59734b;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;padding:4px 1px 0}
+#levelTransition .spinCard.isWinner{border:3px solid #e9b44f;background:#fff5cd;box-shadow:0 0 0 4px #fff7d5,0 0 25px #e9bc66a6;animation:drawWinnerPulse 1.4s ease-in-out infinite!important}
+#levelTransition .drawMarker{position:absolute;left:50%;transform:translateX(-50%);z-index:7;font-size:24px;color:#dca44b;text-shadow:0 1px 2px white;pointer-events:none}
+#levelTransition .drawMarkerTop{top:-5px}
+#levelTransition .drawMarkerBottom{bottom:-5px}
+#levelTransition .drawEdge{position:absolute;top:0;bottom:0;width:18%;z-index:5;pointer-events:none}
+#levelTransition .drawEdgeLeft{left:0;background:linear-gradient(90deg,#f4ead2ed,transparent)}
+#levelTransition .drawEdgeRight{right:0;background:linear-gradient(270deg,#f4ead2ed,transparent)}
+#levelTransition .drawStatus{margin:15px auto 10px;font-size:13px;font-weight:800;color:#6f8b59;min-height:20px}
+#levelTransition #luckyReveal{margin:14px auto 12px;position:relative;z-index:8;background:linear-gradient(160deg,#fff7d9,#fffdf2);border:2px solid #e7c57f;border-radius:22px;padding:15px 18px 12px;box-shadow:0 8px 30px #d6bb7450;animation:drawReveal .55s cubic-bezier(.2,1.35,.5,1) both}
+#levelTransition #luckyReveal.hidden{display:none!important}
+#levelTransition .luckyBurst{color:#d7a34a;font-size:23px;letter-spacing:18px;animation:drawTwinkle 1.3s infinite alternate}
+#levelTransition .luckyLabel{font-size:11px;letter-spacing:2px;color:#b48b43;font-weight:900;margin:5px}
+#levelTransition .luckyDish{height:165px;display:flex;align-items:center;justify-content:center}
+#levelTransition #luckyReveal img{width:100%;height:100%;object-fit:contain;animation:drawFloat 2.6s ease-in-out infinite}
+#levelTransition #luckyReveal h3{font-size:clamp(20px,3vw,27px);color:#3d6845;margin:4px 0}
+#levelTransition #luckyReveal p{font-size:13px;color:#8b956d;margin:5px 0}
+#levelTransition #enterLevel2{margin-top:12px;min-width:205px;padding:14px 28px;background:linear-gradient(135deg,#6f9b61,#436e47);box-shadow:0 5px 0 #35583b,0 8px 18px #456e3b40;border-radius:99px;font-size:15px;transition:transform .2s,filter .2s}
+#levelTransition #enterLevel2:not(:disabled):hover{transform:translateY(-2px);filter:brightness(1.07)}
+#levelTransition #enterLevel2:disabled{opacity:.52;cursor:wait}
+.drawFootnote{font-size:11px;color:#a5a489;margin-top:17px;letter-spacing:.5px}
+@keyframes drawTwinkle{0%,100%{opacity:.45;transform:scale(.8)}50%{opacity:1;transform:scale(1.16)}}
+@keyframes drawWinnerPulse{0%,100%{box-shadow:0 0 0 4px #fff7d5,0 0 15px #e9bc6675}50%{box-shadow:0 0 0 6px #fff7d5,0 0 32px #e9bc66bd}}
+@keyframes drawReveal{from{opacity:0;transform:translateY(18px) scale(.87)}to{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes drawFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+@media(max-width:680px){#levelTransition .transitionCard{padding:22px 13px 19px;border-radius:24px}#levelTransition .drawMachine{height:192px}#levelTransition .spinCard{flex-basis:114px;width:114px;height:151px;padding:6px}#levelTransition .spinCard img{height:96px}#levelTransition .spinCardName{font-size:9px}#levelTransition .spinCardNumber{font-size:9px}#levelTransition .luckyDish{height:130px}#levelTransition .luckyBurst{font-size:18px;letter-spacing:9px}#levelTransition .drawDivider{letter-spacing:1px;gap:7px}#levelTransition .drawDivider::before,#levelTransition .drawDivider::after{width:30px}#levelTransition .transitionCard::before,#levelTransition .transitionCard::after{display:none}}
+@media(prefers-reduced-motion:reduce){#levelTransition .luckyBurst,#levelTransition #luckyReveal img,#levelTransition .spinCard.isWinner{animation:none!important}}
+
+/* 17张卡片真实洗牌：独立叠牌层，不覆盖原抽奖轨道 */
+#levelTransition .drawMachine.is-shuffling .cardWheel { visibility: hidden; }
+#levelTransition .shuffleDeck { position:absolute; inset:0; z-index:6; overflow:hidden; perspective:950px; pointer-events:none; }
+#levelTransition .shuffleCard { position:absolute !important; left:50% !important; top:50% !important; width:132px !important; height:168px !important; margin-left:-66px !important; margin-top:-84px !important; flex:none !important; transform-origin:center center !important; animation:realCardShuffle 1.05s cubic-bezier(.35,.05,.65,.95) infinite alternate !important; animation-delay:calc(var(--i) * -0.071s) !important; box-shadow:0 12px 28px #4c472d55 !important; }
+#levelTransition .shuffleCard img { height:100px !important; }
+@keyframes realCardShuffle {
+  0% { transform:translate3d(calc(var(--drift) * -.85),-22px,0) rotate(calc(var(--tilt) * -1)) scale(.84); opacity:.86; }
+  48% { transform:translate3d(0,-4px,110px) rotate(0deg) scale(1.05); opacity:1; }
+  100% { transform:translate3d(var(--drift),18px,0) rotate(var(--tilt)) scale(.89); opacity:.95; }
+}
+@media(max-width:680px) { #levelTransition .shuffleCard { width:104px !important; height:138px !important; margin-left:-52px !important; margin-top:-69px !important; } #levelTransition .shuffleCard img {height:80px !important;} }
+
+
+/* ===== 参考图：全宽扇形牌阵 + 真实洗牌 ===== */
+#levelTransition .transitionCard{width:min(1120px,97vw);padding:24px 26px 22px}
+#levelTransition .drawMachine.fan-mode{height:clamp(280px,37vw,410px);background:radial-gradient(ellipse at 50% 95%,#ffffff 5%,#faf8ef 52%,#f0efe7 100%);border:0;border-radius:28px;overflow:hidden;box-shadow:inset 0 -20px 35px #e7e4d56b}
+#levelTransition .drawMachine.fan-mode .drawGlow,#levelTransition .drawMachine.fan-mode .drawMarker,#levelTransition .drawMachine.fan-mode .drawEdge{display:none}
+#levelTransition .drawMachine.fan-mode .cardWheel{position:absolute;inset:0;width:100%;height:100%;display:block;overflow:visible;transform:none!important;perspective:1200px}
+#levelTransition .drawMachine.fan-mode .fan-card{position:absolute!important;left:50%!important;top:49%!important;width:clamp(100px,17vw,174px)!important;height:clamp(158px,23vw,238px)!important;margin:0!important;flex:none!important;display:flex!important;flex-direction:column;justify-content:center;align-items:center;padding:11px!important;overflow:hidden;border:1.5px solid #f0dfbd;border-radius:21px;background:linear-gradient(153deg,#fefcf3 0%,#fff8dd 70%,#e7eed9 100%);box-shadow:0 11px 20px #3d3b2e37,0 2px 0 #ffffffbb inset;transform-origin:center center;transition:opacity .55s,filter .55s,box-shadow .4s;animation:none!important;will-change:transform}
+#levelTransition .drawMachine.fan-mode .fan-card:nth-child(4n+1){background:linear-gradient(155deg,#f4e1ff,#fffdf3 70%)}
+#levelTransition .drawMachine.fan-mode .fan-card:nth-child(4n+2){background:linear-gradient(155deg,#fff0a9,#fffdf2 70%)}
+#levelTransition .drawMachine.fan-mode .fan-card:nth-child(4n+3){background:linear-gradient(155deg,#d9ebd3,#fffdf2 70%)}
+#levelTransition .drawMachine.fan-mode .fan-card img{height:clamp(90px,13vw,151px)!important;width:100%;object-fit:contain}
+#levelTransition .drawMachine.fan-mode .fan-card .spinCardName{font-size:clamp(9px,1.05vw,13px);color:#3f614a;padding-top:6px}
+#levelTransition .drawMachine.fan-mode .fan-card.fan-dimmed{opacity:.3;filter:blur(2px) grayscale(.25)}
+#levelTransition .drawMachine.fan-mode .fan-card.fan-selected{border:3px solid #e8b35b;box-shadow:0 0 0 5px #fff5d0,0 22px 45px #b6935399}
+#levelTransition .drawMachine.fan-mode.drawFinished{overflow:visible}
+@media(max-width:680px){#levelTransition .transitionCard{padding:17px 10px}#levelTransition .drawMachine.fan-mode{height:300px}#levelTransition .drawMachine.fan-mode .fan-card{width:108px!important;height:162px!important;padding:7px!important}#levelTransition .drawMachine.fan-mode .fan-card img{height:94px!important}#levelTransition .drawMachine.fan-mode .fan-card .spinCardName{font-size:9px}}
+
+
+/* ===== 真正的圆形转圈洗牌：覆盖之前扇形/横向轨道样式 ===== */
+#levelTransition .transitionCard { width:min(1080px,97vw); }
+#levelTransition .drawMachine.circle-mode {
+  height:clamp(350px,44vw,485px) !important;
+  position:relative !important; overflow:hidden !important;
+  border-radius:28px; border:1px solid #e8e0c5;
+  background:radial-gradient(ellipse at 50% 54%,#fffefa 0%,#f6f5e9 53%,#e7efdf 100%);
+  box-shadow:inset 0 0 35px #d8dfc54a;
+}
+#levelTransition .drawMachine.circle-mode .drawGlow,
+#levelTransition .drawMachine.circle-mode .drawMarker,
+#levelTransition .drawMachine.circle-mode .drawEdge { display:none !important; }
+#levelTransition .drawMachine.circle-mode .cardWheel {
+  position:absolute !important; inset:0 !important; width:100% !important; height:100% !important;
+  display:block !important; overflow:visible !important; transform:none !important;
+}
+#levelTransition .drawMachine.circle-mode .orbit-card {
+  position:absolute !important; left:50% !important; top:49% !important;
+  margin:0 !important; width:clamp(102px,15vw,148px) !important;
+  height:clamp(152px,20vw,200px) !important; flex:none !important;
+  display:flex !important; flex-direction:column !important; justify-content:center !important; align-items:center !important;
+  padding:9px !important; border-radius:20px !important; border:2px solid #e7d6ad !important;
+  background:linear-gradient(155deg,#fff9db,#fffefa 64%,#e6f1e1) !important;
+  box-shadow:0 13px 25px #374f3442, inset 0 2px 0 #ffffff !important;
+  animation:none !important; transition:none !important; transform-origin:center center !important;
+  will-change:transform; overflow:hidden !important;
+}
+#levelTransition .drawMachine.circle-mode .orbit-card:nth-child(4n+1) {background:linear-gradient(145deg,#edd8ff,#fffdf6 75%) !important;}
+#levelTransition .drawMachine.circle-mode .orbit-card:nth-child(4n+2) {background:linear-gradient(145deg,#ffe6a3,#fffdf6 75%) !important;}
+#levelTransition .drawMachine.circle-mode .orbit-card:nth-child(4n+3) {background:linear-gradient(145deg,#d9efcc,#fffdf6 75%) !important;}
+#levelTransition .drawMachine.circle-mode .orbit-card img {height:125px !important;width:100% !important;object-fit:contain !important;}
+#levelTransition .drawMachine.circle-mode .orbit-card .spinCardName {font-size:11px !important;color:#456547 !important;}
+#levelTransition .drawMachine.circle-mode .orbit-card.orbit-winner {border:3px solid #e6ad42 !important;box-shadow:0 0 0 5px #fff1b5,0 25px 45px #6b57398c !important;}
+#levelTransition .drawMachine.circle-mode::after {content:'✦ LUCKY DRAW ✦';position:absolute;left:50%;top:49%;transform:translate(-50%,-50%);color:#a5b68c;font-size:15px;letter-spacing:3px;font-weight:900;pointer-events:none;z-index:0;}
+@media(max-width:680px){
+ #levelTransition .drawMachine.circle-mode{height:365px !important;}
+ #levelTransition .drawMachine.circle-mode .orbit-card{width:105px !important;height:151px !important;}
+ #levelTransition .drawMachine.circle-mode .orbit-card img{height:91px !important;}
+ #levelTransition .drawMachine.circle-mode .orbit-card .spinCardName{font-size:9px !important;}
+}

@@ -127,19 +127,32 @@
     <div id="stageBadge">LEVEL 1 · 厨房拯救 · 1000分过关</div>
     <div id="bodyGuide" class="hidden">双臂向左伸 ← 左移　|　双臂向右伸 → 右移</div>
 
-    <!-- 过关抽卡 -->
-    <section id="levelTransition" class="hidden">
+    <!-- 第一关通关 · 17张菜品幸运抽卡 -->
+    <section id="levelTransition" class="hidden" aria-label="幸运美食抽卡">
       <div class="transitionCard">
-        <div class="eyebrow">LEVEL COMPLETE</div>
-        <h2>第一关挑战成功！</h2>
-        <p>正在抽取你的幸运菜品…</p>
-        <div class="cardWheel" id="cardWheel"></div>
-        <div id="luckyReveal" class="hidden">
-          <img id="luckyImage" alt="幸运菜品">
-          <h3 id="luckyName"></h3>
-          <p>幸运美食已解锁，准备前往湖畔露营！</p>
+        <div class="drawTopline"><span class="drawSpark">✦</span> SECOND CHANCE BITES <span class="drawSpark">✦</span></div>
+        <div class="drawSuccess">LEVEL 01 · COMPLETE</div>
+        <h2>你的幸运美食，即将揭晓！</h2>
+        <p class="drawIntro">成功拯救食物 · 从17道美食中抽取今日惊喜</p>
+        <div class="drawDivider"><span>✳</span> LUCKY FOOD DRAW <span>✳</span></div>
+        <div class="drawMachine" id="drawMachine">
+          <div class="drawGlow"></div>
+          <div class="drawTrack" id="cardWheel" aria-label="旋转抽取美食卡片"></div>
+          <div class="drawMarker drawMarkerTop">▼</div>
+          <div class="drawMarker drawMarkerBottom">▲</div>
+          <div class="drawEdge drawEdgeLeft"></div>
+          <div class="drawEdge drawEdgeRight"></div>
         </div>
-        <button id="enterLevel2" disabled>🎪 进入第二关</button>
+        <div id="drawStatus" class="drawStatus" aria-live="polite">✦ 17张幸运卡片即将圆形旋转洗牌…</div>
+        <div id="luckyReveal" class="hidden" aria-live="polite">
+          <div class="luckyBurst">✧ ✦ ✳ ✦ ✧</div>
+          <div class="luckyLabel">CONGRATULATIONS · 幸运揭晓</div>
+          <div class="luckyDish"><img id="luckyImage" alt="抽中的幸运菜品"></div>
+          <h3 id="luckyName"></h3>
+          <p>幸运美食已解锁！下一站：湖畔露营</p>
+        </div>
+        <button id="enterLevel2" disabled>🎪 进入第二关 →</button>
+        <div class="drawFootnote">每次通关随机抽取 · 17款菜品机会均等</div>
       </div>
     </section>
 

@@ -405,3 +405,21 @@ button:disabled {
     font-size: 20px;
   }
 }
+/* ===== 新关卡 UI ===== */
+#stageBadge{position:absolute;top:130px;left:20px;z-index:12;background:#fffdf1ec;color:#436349;border-radius:20px;padding:9px 16px;font-size:13px;font-weight:800;pointer-events:none}
+#bodyGuide{position:absolute;top:176px;left:50%;transform:translateX(-50%);z-index:12;background:#fffdf1e8;color:#466349;border-radius:22px;padding:10px 20px;text-align:center;font-size:15px;font-weight:800;white-space:nowrap;pointer-events:none}
+#levelTransition,#rankingOverlay{position:absolute;inset:0;z-index:900;background:#283d2bbd;backdrop-filter:blur(8px);display:grid;place-items:center;padding:14px}
+.transitionCard,.rankCard{width:min(560px,96vw);max-height:94dvh;overflow:auto;background:#fffdf0;border:3px solid #fff;border-radius:28px;box-shadow:0 20px 65px #1e34265c;padding:24px;text-align:center;color:#476348}
+.transitionCard h2,.rankCard h2{font-size:clamp(23px,3vw,34px);margin:12px 0}
+.cardWheel{height:225px;position:relative;perspective:900px;overflow:hidden;margin:16px 0}
+.spinCard{position:absolute;top:26px;left:calc(50% - 83px);width:166px;height:170px;border-radius:16px;background:#fff5d9;box-shadow:0 6px 18px #2c35283d;display:grid;place-items:center;animation:cardSpin 1.1s linear infinite;animation-delay:var(--delay);transform-origin:50% 130px}
+.spinCard img{width:95%;height:95%;object-fit:contain}
+@keyframes cardSpin{from{transform:rotateY(0deg) translateX(90px) rotateZ(-12deg)}to{transform:rotateY(360deg) translateX(90px) rotateZ(12deg)}}
+#luckyReveal img{height:180px;width:100%;object-fit:contain;animation:luckyPop .6s ease-out both}
+@keyframes luckyPop{from{transform:scale(.45) rotate(-12deg);opacity:0}to{transform:scale(1) rotate(0);opacity:1}}
+#enterLevel2:disabled{opacity:.4;cursor:wait}
+#rankingList{padding-left:0;list-style:none;max-height:40vh;overflow:auto}
+#rankingList li{display:flex;justify-content:space-between;gap:10px;background:#f2f3df;border-radius:14px;margin:8px 0;padding:12px 14px;font-size:15px}
+#rankingList li.current{background:#d9eabb;font-weight:800}
+#rankSummary{font-weight:700}
+@media(max-width:680px){#stageBadge{top:78px;left:8px;font-size:10px;padding:6px 9px}#bodyGuide{top:116px;font-size:10px;padding:7px;max-width:98%;white-space:normal}.cardWheel{height:180px}.spinCard{width:125px;height:130px;left:calc(50% - 62px)}#luckyReveal img{height:140px}}

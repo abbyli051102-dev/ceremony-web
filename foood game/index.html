@@ -92,7 +92,7 @@
           新鲜食材落入左右移动的汤锅，
           变质食材抓住后向左右两侧丢弃。
           握拳抓取，张掌释放。
-          汤锅每20秒加速，只有三条命！
+          汤锅每10秒加速，达到1000分解锁湖畔关卡！
         </p>
 
         <div class="modalButtons">
@@ -122,6 +122,37 @@
         </button>
       </div>
     </div>
+
+    <!-- 关卡信息 -->
+    <div id="stageBadge">LEVEL 1 · 厨房拯救 · 1000分过关</div>
+    <div id="bodyGuide" class="hidden">双臂向左伸 ← 左移　|　双臂向右伸 → 右移</div>
+
+    <!-- 过关抽卡 -->
+    <section id="levelTransition" class="hidden">
+      <div class="transitionCard">
+        <div class="eyebrow">LEVEL COMPLETE</div>
+        <h2>第一关挑战成功！</h2>
+        <p>正在抽取你的幸运菜品…</p>
+        <div class="cardWheel" id="cardWheel"></div>
+        <div id="luckyReveal" class="hidden">
+          <img id="luckyImage" alt="幸运菜品">
+          <h3 id="luckyName"></h3>
+          <p>幸运美食已解锁，准备前往湖畔露营！</p>
+        </div>
+        <button id="enterLevel2" disabled>🎪 进入第二关</button>
+      </div>
+    </section>
+
+    <!-- 排行榜 -->
+    <section id="rankingOverlay" class="hidden">
+      <div class="rankCard">
+        <div class="eyebrow">SECOND CHANCE BITES</div>
+        <h2>🏆 无限模式排行榜</h2>
+        <p id="rankSummary"></p>
+        <ol id="rankingList"></ol>
+        <button id="rankRestart">↻ 再玩一次</button>
+      </div>
+    </section>
 
     <!-- 最终美食结算 -->
     <div id="foodResult" class="food-result hidden">
@@ -160,6 +191,7 @@
 
   </main>
 
+  <script src="level2.js" defer></script>
   <script src="script.js" defer></script>
 </body>
 </html>

@@ -277,6 +277,7 @@ function flash(message) {
 /* ===== 游戏开始 / 重置 ===== */
 
 async function startGame(which) {
+  if (window.levelTwo) window.levelTwo.reset();
   mode = which;
 
   playing = false;
@@ -392,6 +393,7 @@ function showFoodResult() {
 
 function endGame() {
   if (finished) return;
+  if (window.levelTwo && window.levelTwo.stage >= 2) { window.levelTwo.gameOver(); return; }
 
   playing = false;
   finished = true;
@@ -473,6 +475,10 @@ function finishItem(item, correct, message, points) {
 
   updateHud();
 
+  if (window.levelTwo && window.levelTwo.stage === 1 && score >= 1000) {
+    window.levelTwo.winLevelOne();
+    return;
+  }
   if (lives <= 0) {
     endGame();
   }
@@ -1288,6 +1294,11 @@ function draw() {
     layout.height * 3
   );
 
+  if (window.levelTwo && window.levelTwo.stage >= 2) {
+    window.levelTwo.draw(ctx);
+    return;
+  }
+
   drawBackground();
 
   // 只保留移动汤锅
@@ -1369,11 +1380,15 @@ function loop(now) {
   lastTime = now;
 
   // 摄像头持续更新，但暂停时不执行游戏操作
-  if (mode === "camera" && !paused) {
+  if (mode === "camera" && !paused && (!window.levelTwo || window.levelTwo.stage === 1)) {
     detectHands(now);
   }
 
-  if (playing && !paused) {
+  if (playing && !paused && window.levelTwo && window.levelTwo.stage >= 2) {
+    window.levelTwo.update(dt, now);
+  }
+
+  if (playing && !paused && (!window.levelTwo || window.levelTwo.stage === 1)) {
     elapsed += dt;
     remaining -= dt;
     spawnTimer -= dt;
@@ -1504,6 +1519,7 @@ el("cameraBtn").addEventListener(
 
       if (ok) {
         mode = "camera";
+        if (window.levelTwo && window.levelTwo.stage >= 2) window.levelTwo.initHolistic();
       }
     }
   }
